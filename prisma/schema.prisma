@@ -1,0 +1,35 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Galaxy {
+  id          Int      @id @default(autoincrement())
+  name        String
+  icon        String?
+  communities Int       @default(0)
+  positionX   Float
+  positionY   Float
+  size        Int
+  sectors     Sector[]
+}
+
+model Sector {
+  id        Int      @id @default(autoincrement())
+  name      String
+  galaxyId  Int
+  Galaxy    Galaxy   @relation(fields: [galaxyId], references: [id])
+  posts     Post[]
+}
+
+model Post {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String
+  sectorId  Int
+  Sector    Sector   @relation(fields: [sectorId], references: [id])
+}
