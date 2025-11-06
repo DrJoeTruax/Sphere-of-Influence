@@ -29,7 +29,9 @@ export default function HubSelectionPage() {
         localStorage.setItem('breakthrough_selected_hub', selectedHub)
       }
       // Navigate to role selection
-      router.push(`/hub/${selectedHub}/role`)
+      setTimeout(() => {
+        router.push(`/hub/${selectedHub}/role`)
+      }, 300)
     }
   }
 
