@@ -2,7 +2,7 @@
 
 import { useState, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import type { Proposal } from '@/components/3d/Forum3D'
 import ProposalDetail from '@/components/forum/ProposalDetail'
@@ -88,6 +88,7 @@ const MOCK_PROPOSALS: Proposal[] = [
 
 export default function BuilderPage() {
   const params = useParams()
+  const router = useRouter()
   const hubId = params.hubId as string
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null)
   const [userVotes, setUserVotes] = useState<Record<string, 'for' | 'against' | 'abstain'>>({})
@@ -188,6 +189,18 @@ export default function BuilderPage() {
             <p className="text-sm text-gray-400">{MOCK_PROPOSALS.length} active proposals</p>
           </div>
           <div className="flex gap-2">
+            <button
+              onClick={() => router.push(`/hub/${hubId}/builder/submit`)}
+              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-lg text-sm font-semibold transition-all"
+            >
+              ➕ Submit Proposal
+            </button>
+            <button
+              onClick={() => router.push(`/hub/${hubId}/builder/wave/review`)}
+              className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm transition-colors"
+            >
+              🌊 Review Applications
+            </button>
             <button
               onClick={() => setView(view === '3d' ? '2d' : '3d')}
               className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm transition-colors"
