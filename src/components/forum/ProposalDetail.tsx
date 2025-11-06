@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Proposal } from '@/components/3d/Forum3D'
+import { useCelebrations } from '@/lib/hooks/useCelebrations'
+import ConsensusReached from '@/components/celebrations/ConsensusReached'
 
 interface ProposalDetailProps {
   proposal: Proposal
@@ -18,6 +20,7 @@ export default function ProposalDetail({
   userVote,
 }: ProposalDetailProps) {
   const [showVoteConfirm, setShowVoteConfirm] = useState<'for' | 'against' | 'abstain' | null>(null)
+  const { showCelebration, celebrationData, dismissCelebration, checkAndCelebrate } = useCelebrations()
 
   const totalVotes = proposal.votes_for + proposal.votes_against + proposal.votes_abstain
   const consensusPercentage = totalVotes > 0
@@ -34,7 +37,31 @@ export default function ProposalDetail({
 
   const confirmVote = () => {
     if (showVoteConfirm) {
+      // Store previous vote counts
+      const previousVotesFor = proposal.votes_for
+      const previousVotesAgainst = proposal.votes_against
+      const previousVotesAbstain = proposal.votes_abstain
+
+      // Cast the vote
       onVote(proposal.id, showVoteConfirm)
+
+      // Calculate new vote counts (optimistic update)
+      const newVotesFor = showVoteConfirm === 'for' ? previousVotesFor + 1 : previousVotesFor
+      const newVotesAgainst = showVoteConfirm === 'against' ? previousVotesAgainst + 1 : previousVotesAgainst
+      const newVotesAbstain = showVoteConfirm === 'abstain' ? previousVotesAbstain + 1 : previousVotesAbstain
+
+      // Check if this vote caused consensus to be reached
+      checkAndCelebrate({
+        proposalTitle: proposal.title,
+        category: proposal.category,
+        votesFor: newVotesFor,
+        votesAgainst: newVotesAgainst,
+        votesAbstain: newVotesAbstain,
+        previousVotesFor,
+        previousVotesAgainst,
+        previousVotesAbstain,
+      })
+
       setShowVoteConfirm(null)
     }
   }
@@ -245,6 +272,13 @@ export default function ProposalDetail({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Consensus Celebration */}
+      <ConsensusReached
+        show={showCelebration}
+        data={celebrationData}
+        onComplete={dismissCelebration}
+      />
     </motion.div>
   )
 }
