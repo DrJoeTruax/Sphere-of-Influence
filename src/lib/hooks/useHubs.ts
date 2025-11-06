@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase/client'
+import { supabase, isSupabaseConfigured } from '@/lib/supabase/client'
 
 export interface Hub {
   id: string
@@ -21,6 +21,12 @@ export function useHubs() {
 
   useEffect(() => {
     async function fetchHubs() {
+      // Skip fetching if Supabase not configured (e.g., during build)
+      if (!isSupabaseConfigured) {
+        setLoading(false)
+        return
+      }
+
       try {
         const { data, error } = await supabase
           .from('hubs')

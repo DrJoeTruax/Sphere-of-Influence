@@ -49,7 +49,7 @@ export default function EnterPage() {
     setState('entering')
     // Transition to hub selection (Phase 3)
     setTimeout(() => {
-      setState('complete')
+      window.location.href = '/hub'
     }, 1000)
   }
 
