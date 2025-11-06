@@ -4,8 +4,8 @@ import { ReactNode } from "react";
 import Providers from "@/components/Providers";   // <-- keep import here, at top
 
 export const metadata: Metadata = {
-  title: "Kinddit",
-  description: "A safer, transparent social space",
+  title: "Breakthrough - AGI Coordination Platform",
+  description: "A 3D web platform for 7 billion people to coordinate global AGI development through autonomous governance. Built on the 7 Immutable Laws.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

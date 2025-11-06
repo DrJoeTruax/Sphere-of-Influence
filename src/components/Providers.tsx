@@ -1,9 +1,38 @@
 ﻿"use client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
+import { useEmergencyAlerts } from "@/lib/hooks/useEmergencyAlerts";
+import EmergencyAlert from "@/components/alerts/EmergencyAlert";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
-export default function Providers({ children }) {
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+function EmergencyAlertProvider({ children }: { children: React.ReactNode }) {
+  const { alerts, dismissAlert } = useEmergencyAlerts();
+
+  return (
+    <>
+      {children}
+      {alerts.map((alert) => (
+        <EmergencyAlert
+          key={alert.id}
+          alert={alert}
+          onDismiss={() => dismissAlert(alert.id)}
+          allowDismiss={alert.severity !== 'critical'}
+        />
+      ))}
+    </>
+  );
+}
+
+export default function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <EmergencyAlertProvider>
+          {children}
+        </EmergencyAlertProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
+  );
 }
