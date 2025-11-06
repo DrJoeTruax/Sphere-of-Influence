@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import type { Proposal } from '@/components/3d/Forum3D'
 import ProposalDetail from '@/components/forum/ProposalDetail'
+import Forum2D from '@/components/forum/Forum2D'
 
 // Dynamic import for 3D Forum
 const Forum3D = dynamic(() => import('@/components/3d/Forum3D'), {
@@ -178,6 +179,17 @@ export default function BuilderPage() {
               selectedProposalId={selectedProposal?.id}
             />
           </Suspense>
+        </div>
+      )}
+
+      {/* 2D Forum View */}
+      {view === '2d' && (
+        <div className="absolute inset-0 pt-20">
+          <Forum2D
+            proposals={MOCK_PROPOSALS}
+            onProposalClick={handleProposalClick}
+            userVotes={userVotes}
+          />
         </div>
       )}
 

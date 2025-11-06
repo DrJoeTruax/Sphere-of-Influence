@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 import { useEmergencyAlerts } from "@/lib/hooks/useEmergencyAlerts";
 import EmergencyAlert from "@/components/alerts/EmergencyAlert";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
@@ -26,10 +27,12 @@ function EmergencyAlertProvider({ children }: { children: React.ReactNode }) {
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <QueryClientProvider client={queryClient}>
-      <EmergencyAlertProvider>
-        {children}
-      </EmergencyAlertProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <EmergencyAlertProvider>
+          {children}
+        </EmergencyAlertProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
