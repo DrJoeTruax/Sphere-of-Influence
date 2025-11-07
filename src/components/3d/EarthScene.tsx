@@ -4,6 +4,7 @@ import { useRef, useEffect, useState, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
+import { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import EnhancedEarth from './EnhancedEarth'
 import SpaceStation from './SpaceStation'
 import NaderSatellite from './NaderSatellite'
@@ -70,7 +71,7 @@ function CameraController({
   cycleIndex: number
 }) {
   const { camera, gl } = useThree()
-  const controlsRef = useRef<any>(null)
+  const controlsRef = useRef<OrbitControlsImpl>(null)
   const [isZooming, setIsZooming] = useState(true)
   const [isFlying, setIsFlying] = useState(false)
   const [isUserInteracting, setIsUserInteracting] = useState(false)
@@ -191,7 +192,6 @@ function CameraController({
   return (
     <OrbitControls
       ref={controlsRef}
-      args={[camera, gl.domElement]}
       enableDamping
       dampingFactor={0.05}
       rotateSpeed={0.4}
@@ -224,8 +224,9 @@ export default function EarthScene({
   return (
     <>
       {/* Lighting */}
+      <pointLight position={[60, 0, 0]} intensity={3} color="#fff5b3" />
       <directionalLight
-        position={[10, 0, 5]}
+        position={[60, 0, 0]}
         intensity={Math.PI * 1.5}
         castShadow
       />
@@ -234,14 +235,14 @@ export default function EarthScene({
       {/* Starfield background */}
       <EnhancedStarfield count={9000} radius={2000} />
 
-      {/* Sun at center */}
-      <mesh ref={sunRef} position={[0, 0, 0]}>
+      {/* Sun positioned away from Earth */}
+      <mesh ref={sunRef} position={[60, 0, 0]}>
         <sphereGeometry args={[3, 64, 64]} />
         <meshBasicMaterial color="#ffdd55" />
       </mesh>
 
       {/* Sun glow */}
-      <mesh position={[0, 0, 0]}>
+      <mesh position={[60, 0, 0]}>
         <sphereGeometry args={[3.5, 64, 64]} />
         <meshBasicMaterial
           color="#ffdd55"
