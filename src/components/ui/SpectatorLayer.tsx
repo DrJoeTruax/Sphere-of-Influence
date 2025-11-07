@@ -11,19 +11,19 @@ interface SpectatorLayerProps {
   setCycleIndex: React.Dispatch<React.SetStateAction<number>>
 }
 
-// Regional hubs data
+// Regional hubs data with colors matching Earth regions
 const regionalHubs = [
-  { name: 'North America', initialViews: 2347839 },
-  { name: 'Latin America', initialViews: 1823456 },
-  { name: 'Western Europe', initialViews: 3891234 },
-  { name: 'Eastern Europe', initialViews: 1456789 },
-  { name: 'Middle East', initialViews: 892345 },
-  { name: 'Africa', initialViews: 1234567 },
-  { name: 'India', initialViews: 12456789 },
-  { name: 'China', initialViews: 9876543 },
-  { name: 'Southeast Asia', initialViews: 2345678 },
-  { name: 'East Asia', initialViews: 3456789 },
-  { name: 'Oceania', initialViews: 567890 },
+  { name: 'North America', initialViews: 2347839, color: '#4CAF50' },
+  { name: 'Latin America', initialViews: 1823456, color: '#FFC107' },
+  { name: 'Western Europe', initialViews: 3891234, color: '#2196F3' },
+  { name: 'Eastern Europe', initialViews: 1456789, color: '#9C27B0' },
+  { name: 'Middle East', initialViews: 892345, color: '#FF5722' },
+  { name: 'Africa', initialViews: 1234567, color: '#795548' },
+  { name: 'India', initialViews: 12456789, color: '#FF9800' },
+  { name: 'China', initialViews: 9876543, color: '#F44336' },
+  { name: 'Southeast Asia', initialViews: 2345678, color: '#00BCD4' },
+  { name: 'East Asia', initialViews: 3456789, color: '#E91E63' },
+  { name: 'Oceania', initialViews: 567890, color: '#009688' },
 ]
 
 function getViewCount(hubName: string): number {
@@ -160,14 +160,15 @@ export default function SpectatorLayer({
                   onSelectHub(hub.name)
                 }}
                 className={`w-full text-left px-2 py-1 rounded transition-colors ${
-                  isSelected ? 'bg-blue-900/50 border border-blue-500' : 'hover:bg-gray-800'
+                  isSelected ? 'bg-blue-900/50 border' : 'hover:bg-gray-800'
                 }`}
+                style={isSelected ? { borderColor: hub.color } : {}}
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="flex-shrink-0">{emoji}</span>
-                  <span className="flex-1 truncate">{hub.name}</span>
+                  <span className="flex-1 truncate" style={{ color: hub.color }}>{hub.name}</span>
                   <span className="text-green-400">{formatNumber(views)}</span>
-                  <span className="text-gray-500">◉</span>
+                  <span style={{ color: hub.color }}>◉</span>
                   <span className="text-gray-400 text-[10px]">EN</span>
                 </div>
               </button>

@@ -213,15 +213,16 @@ function RegionLabel({ hub }: { hub: HubMarker }) {
 function HubSatellite({
   hub,
   onClick,
-  showLabel
+  showLabel,
+  isSelected
 }: {
   hub: HubMarker
   onClick: () => void
   showLabel: boolean
+  isSelected: boolean
 }) {
   const [lat, lon] = hub.position
   const position = useMemo(() => latLonToVector3(lat, lon, EARTH_RADIUS + 0.3), [lat, lon])
-  const screenPosition = useMemo(() => latLonToVector3(lat, lon, EARTH_RADIUS + 0.6), [lat, lon])
   const [isHovered, setIsHovered] = useState(false)
 
   return (
@@ -251,8 +252,8 @@ function HubSatellite({
         />
       </mesh>
 
-      {/* Holographic Screen - always visible when showLabel is true */}
-      {showLabel && (
+      {/* Holographic Screen - only visible for selected hub */}
+      {showLabel && isSelected && (
         <HolographicScreen
           hubName={hub.name}
           contributors={hub.activeContributors}
@@ -388,12 +389,13 @@ export default function EnhancedEarth({
       )}
 
       {/* Hub satellites */}
-      {hubs.map((hub) => (
+      {hubs.map((hub, index) => (
         <HubSatellite
           key={hub.id}
           hub={hub}
           onClick={() => onHubSelect?.(hub.id)}
           showLabel={showLabels}
+          isSelected={index === selectedHubIndex}
         />
       ))}
     </group>
