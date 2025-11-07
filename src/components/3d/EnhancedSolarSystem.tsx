@@ -24,6 +24,7 @@ export default function EnhancedSolarSystem({
 }: EnhancedSolarSystemProps) {
   const cameraRef = useRef<THREE.PerspectiveCamera>(null)
   const sunRef = useRef<THREE.Mesh>(null)
+  const controlsRef = useRef<any>(null)
   const animationProgress = useRef(0)
   const [isAnimating, setIsAnimating] = useState(autoZoom)
   const { camera } = useThree()
@@ -43,6 +44,12 @@ export default function EnhancedSolarSystem({
     // Rotate sun slowly
     if (sunRef.current) {
       sunRef.current.rotation.y += delta * 0.05
+    }
+
+    // Update OrbitControls target to follow Earth
+    if (controlsRef.current && earthPos.current) {
+      controlsRef.current.target.copy(earthPos.current)
+      controlsRef.current.update()
     }
 
     // Camera zoom animation - starts far out and zooms to Earth
@@ -81,6 +88,7 @@ export default function EnhancedSolarSystem({
 
       {/* Orbit controls (disabled during intro animation) */}
       <OrbitControls
+        ref={controlsRef}
         enabled={!isAnimating}
         enableDamping
         dampingFactor={0.05}
@@ -89,7 +97,6 @@ export default function EnhancedSolarSystem({
         minDistance={3}
         maxDistance={800}
         enablePan={false}
-        target={[0, 0, 0]}
       />
 
       {/* Lighting setup */}
@@ -102,8 +109,8 @@ export default function EnhancedSolarSystem({
         <Environment preset="night" />
       </Suspense>
 
-      {/* Enhanced starfield background */}
-      <EnhancedStarfield count={9000} radius={2000} />
+      {/* Enhanced starfield background - stars far from solar system */}
+      <EnhancedStarfield count={9000} />
 
       {/* Sun at center */}
       <mesh ref={sunRef} position={[0, 0, 0]}>
@@ -126,7 +133,7 @@ export default function EnhancedSolarSystem({
       <Planet
         name="Mercury"
         size={0.2}
-        semiMajor={10}
+        semiMajor={20}
         eccentricity={0.205}
         orbitPeriod={20}
         color="#b5b5b5"
@@ -134,7 +141,7 @@ export default function EnhancedSolarSystem({
       <Planet
         name="Venus"
         size={0.45}
-        semiMajor={18}
+        semiMajor={36}
         eccentricity={0.007}
         orbitPeriod={50}
         color="#d4a15f"
@@ -150,40 +157,40 @@ export default function EnhancedSolarSystem({
       {/* Outer Planets */}
       <Planet
         name="Mars"
-        size={0.35}
-        semiMajor={38}
+        size={0.6}
+        semiMajor={76}
         eccentricity={0.093}
         orbitPeriod={142}
         color="#d15b5b"
       />
       <Planet
         name="Jupiter"
-        size={1.1}
-        semiMajor={70}
+        size={6.0}
+        semiMajor={140}
         eccentricity={0.049}
         orbitPeriod={890}
         color="#b08968"
       />
       <Planet
         name="Saturn"
-        size={1.0}
-        semiMajor={100}
+        size={5.0}
+        semiMajor={200}
         eccentricity={0.056}
         orbitPeriod={2200}
         color="#cdb79e"
       />
       <Planet
         name="Uranus"
-        size={0.8}
-        semiMajor={140}
+        size={2.5}
+        semiMajor={280}
         eccentricity={0.047}
         orbitPeriod={6400}
         color="#7ec8e3"
       />
       <Planet
         name="Neptune"
-        size={0.7}
-        semiMajor={180}
+        size={2.5}
+        semiMajor={360}
         eccentricity={0.009}
         orbitPeriod={12800}
         color="#4b6cb7"
