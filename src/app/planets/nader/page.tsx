@@ -7,12 +7,10 @@ import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { getAllProofs, logStationVisit, type Proof } from '@/lib/api/proof-station'
 import ProofDetail from '@/components/proof-station/ProofDetail'
-import LoadingSpinner from '@/components/LoadingSpinner'
 
 // Dynamic import for 3D components
 const StationAtrium = dynamic(() => import('@/components/3d/StationAtrium'), {
-  ssr: false,
-  loading: () => <LoadingSpinner fullScreen message="Loading Proof Station One..." />
+  ssr: false
 })
 
 export default function ProofStationPage() {
