@@ -5,34 +5,19 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Canvas } from '@react-three/fiber'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
+import { detectUserLanguage, translate, LANGUAGES } from '@/utils/languages'
 
 // Dynamic imports for 3D components
-const UniverseBackground = dynamic(() => import('@/components/3d/UniverseBackground'), { ssr: false })
-const Text3D = dynamic(() => import('@/components/3d/Text3D'), { ssr: false })
+const BlackHole = dynamic(() => import('@/components/3d/BlackHole'), { ssr: false })
 const HolographicEarth = dynamic(() => import('@/components/3d/HolographicEarth'), { ssr: false })
-
-const LANGUAGES = [
-  { code: 'en', name: 'English', nativeName: 'English' },
-  { code: 'es', name: 'Spanish', nativeName: 'Español' },
-  { code: 'pt', name: 'Portuguese', nativeName: 'Português' },
-  { code: 'zh', name: 'Chinese', nativeName: '中文' },
-  { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी' },
-  { code: 'ar', name: 'Arabic', nativeName: 'العربية' },
-  { code: 'ru', name: 'Russian', nativeName: 'Русский' },
-  { code: 'fr', name: 'French', nativeName: 'Français' },
-  { code: 'de', name: 'German', nativeName: 'Deutsch' },
-  { code: 'ja', name: 'Japanese', nativeName: '日本語' },
-  { code: 'ko', name: 'Korean', nativeName: '한국어' },
-  { code: 'id', name: 'Indonesian', nativeName: 'Bahasa Indonesia' },
-]
 
 type EntryState = 'loading' | 'opening' | 'entering'
 
-export default function EnterPageEpic() {
+export default function EnterPage() {
   const [state, setState] = useState<EntryState>('loading')
-  const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null)
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('en')
   const [showExplainer, setShowExplainer] = useState(false)
-  const [messageIndex, setMessageIndex] = useState(0)
+  const [mounted, setMounted] = useState(false)
 
   const coreMessages = [
     'This is not a game.',
@@ -42,7 +27,9 @@ export default function EnterPageEpic() {
   ]
 
   useEffect(() => {
-    // Show opening after brief load
+    setMounted(true)
+    const detectedLang = detectUserLanguage()
+    setSelectedLanguage(detectedLang)
     setTimeout(() => setState('opening'), 1500)
   }, [])
 
@@ -57,99 +44,93 @@ export default function EnterPageEpic() {
     setState('entering')
     setTimeout(() => {
       window.location.href = '/hub'
-    }, 1000)
+    }, 1500)
+  }
+
+  if (state === 'loading') {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-cyan-500 mx-auto mb-4"></div>
+          <p className="text-white/60">Initializing...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
     <main className="min-h-screen bg-black text-white overflow-hidden relative">
-      {/* Fixed 3D Universe Background */}
+      {/* Fixed 3D Black Hole Background */}
       <div className="fixed inset-0 z-0">
-        <Canvas camera={{ position: [0, 0, 10], fov: 75 }}>
+        <Canvas camera={{ position: [0, 0, 30], fov: 75 }}>
           <Suspense fallback={null}>
-            <UniverseBackground count={3000} nebulaEnabled={true} />
+            <BlackHole position={[0, 0, -20]} size={5} />
+            <ambientLight intensity={0.3} />
+            <pointLight position={[20, 20, 20]} intensity={0.5} />
           </Suspense>
         </Canvas>
       </div>
 
-      {/* 3D Text Messages Layer */}
-      <AnimatePresence>
-        {state === 'opening' && (
-          <div className="fixed inset-0 z-5 pointer-events-none">
-            <Canvas camera={{ position: [0, 0, 5], fov: 75 }}>
-              <Suspense fallback={null}>
-                {coreMessages.map((message, index) => (
-                  <motion.group
-                    key={index}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: index <= messageIndex ? 1 : 0 }}
-                  >
-                    <Text3D
-                      position={[0, 1.5 - index * 0.8, 0]}
-                      fontSize={index === 3 ? 0.6 : 0.25}
-                      color={index === 3 ? '#A78BFA' : '#D1D5DB'}
-                      glowColor={index === 3 ? '#8B5CF6' : '#3B82F6'}
-                      rotation={[-0.2, 0, 0]}
-                      animate={index === 3}
-                    >
-                      {message}
-                    </Text3D>
-                  </motion.group>
-                ))}
-                <ambientLight intensity={0.5} />
-                <pointLight position={[10, 10, 10]} intensity={1} />
-              </Suspense>
-            </Canvas>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* UI Layer */}
+      {/* Opening Screen */}
       <AnimatePresence>
         {state === 'opening' && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 flex items-center justify-center z-10"
+            className="fixed inset-0 flex items-center justify-center z-10 p-4"
           >
-            <div className="max-w-4xl w-full px-8 text-center">
-              {/* Spacer for 3D text */}
-              <div className="h-64 mb-8" />
-
-              {/* Animated message sequence */}
-              <div className="invisible">
-                {coreMessages.map((msg, idx) => {
-                  setTimeout(() => setMessageIndex(idx), 1000 + idx * 1000)
-                  return <div key={idx} />
-                })}
+            <div className="max-w-4xl w-full text-center">
+              {/* Core Messages */}
+              <div className="mb-12 space-y-6">
+                {coreMessages.map((line, index) => (
+                  <motion.p
+                    key={index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{
+                      duration: 1,
+                      delay: index * 0.8,
+                    }}
+                    className={`${
+                      index === coreMessages.length - 1
+                        ? 'text-5xl md:text-7xl font-bold bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-500 bg-clip-text text-transparent'
+                        : 'text-2xl md:text-3xl text-gray-300'
+                    }`}
+                  >
+                    {line}
+                  </motion.p>
+                ))}
               </div>
 
-              {/* Language Selection - appears after messages */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 1, delay: 5 }}
-                className="mb-8"
-              >
-                <div className="backdrop-blur-xl bg-black/40 rounded-2xl p-8 border border-gray-800/50">
-                  <p className="text-sm text-gray-400 mb-4">Select your language:</p>
-                  <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                    {LANGUAGES.map((lang) => (
-                      <button
-                        key={lang.code}
-                        onClick={() => handleLanguageSelect(lang.code)}
-                        className={`px-3 py-2 rounded-lg text-sm transition-all backdrop-blur-xl ${
-                          selectedLanguage === lang.code
-                            ? 'bg-blue-600/80 text-white ring-2 ring-blue-400 shadow-lg shadow-blue-500/50'
-                            : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700/60 border border-gray-700/50'
-                        }`}
-                      >
-                        {lang.nativeName}
-                      </button>
-                    ))}
+              {/* Language Selection */}
+              {mounted && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 1, delay: 3.5 }}
+                  className="mb-8"
+                >
+                  <div className="backdrop-blur-xl bg-black/40 rounded-2xl p-8 border border-cyan-500/30">
+                    <p className="text-sm text-gray-400 mb-4">Select your language:</p>
+                    <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                      {LANGUAGES.slice(0, 12).map((lang) => (
+                        <button
+                          key={lang.code}
+                          onClick={() => handleLanguageSelect(lang.code)}
+                          className={`px-3 py-2 rounded-lg text-sm transition-all backdrop-blur-xl ${
+                            selectedLanguage === lang.code
+                              ? 'bg-cyan-600/80 text-white ring-2 ring-cyan-400 shadow-lg shadow-cyan-500/50'
+                              : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700/60 border border-gray-700/50'
+                          }`}
+                        >
+                          {lang.nativeName}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              </motion.div>
+                </motion.div>
+              )}
 
               {/* Enter Button */}
               <AnimatePresence>
@@ -163,17 +144,17 @@ export default function EnterPageEpic() {
                   >
                     <button
                       onClick={handleEnter}
-                      className="group relative px-12 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white text-xl font-bold rounded-lg shadow-lg shadow-blue-500/50 transition-all transform hover:scale-105 overflow-hidden"
+                      className="group relative px-12 py-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xl font-bold rounded-lg shadow-lg shadow-cyan-500/50 transition-all transform hover:scale-105 overflow-hidden"
                     >
                       <span className="relative z-10">ENTER</span>
-                      <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     </button>
 
                     {/* Strategic Links */}
                     <div className="flex items-center justify-center gap-6 text-sm">
                       <button
                         onClick={() => setShowExplainer(true)}
-                        className="text-blue-400 hover:text-blue-300 flex items-center gap-2 backdrop-blur-xl bg-black/40 px-4 py-2 rounded-lg border border-gray-800/50 hover:border-blue-500/50 transition-all"
+                        className="text-cyan-400 hover:text-cyan-300 flex items-center gap-2 backdrop-blur-xl bg-black/40 px-4 py-2 rounded-lg border border-gray-800/50 hover:border-cyan-500/50 transition-all"
                       >
                         <span>❓</span>
                         <span>What is this?</span>
@@ -209,9 +190,9 @@ export default function EnterPageEpic() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.8, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-gray-900/90 backdrop-blur-xl rounded-2xl p-8 max-w-2xl w-full border border-gray-800/50 shadow-2xl"
+              className="bg-gray-900/90 backdrop-blur-xl rounded-2xl p-8 max-w-2xl w-full border border-cyan-500/30 shadow-2xl"
             >
-              <h2 className="text-2xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+              <h2 className="text-2xl font-bold mb-4 bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
                 What is Breakthrough?
               </h2>
               <div className="space-y-4 text-gray-300">
@@ -222,7 +203,7 @@ export default function EnterPageEpic() {
                 <p>
                   We bring together 7 billion people to build AGI that
                   respects human autonomy, built on the{' '}
-                  <strong className="text-blue-400">7 Immutable Laws</strong>:
+                  <strong className="text-cyan-400">7 Immutable Laws</strong>:
                 </p>
                 <ul className="list-disc pl-6 space-y-1 text-sm">
                   <li>Truth - Full transparency</li>
@@ -241,7 +222,7 @@ export default function EnterPageEpic() {
               </div>
               <button
                 onClick={() => setShowExplainer(false)}
-                className="mt-6 px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-lg w-full font-semibold"
+                className="mt-6 px-6 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 rounded-lg w-full font-semibold transition-all"
               >
                 Got it!
               </button>
@@ -256,9 +237,9 @@ export default function EnterPageEpic() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="fixed inset-0 flex items-center justify-center z-50 bg-black"
+            className="fixed inset-0 flex flex-col items-center justify-center z-50 bg-black"
           >
-            <div className="w-64 h-64">
+            <div className="w-48 h-48 md:w-64 md:h-64 mb-8">
               <Canvas camera={{ position: [0, 0, 3], fov: 50 }}>
                 <Suspense fallback={null}>
                   <HolographicEarth />
@@ -267,11 +248,11 @@ export default function EnterPageEpic() {
               </Canvas>
             </div>
             <motion.div
-              initial={{ scale: 0.5, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="absolute text-center"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center"
             >
-              <div className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+              <div className="text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
                 Entering Breakthrough
               </div>
               <div className="text-gray-400">Preparing your experience...</div>
@@ -279,14 +260,6 @@ export default function EnterPageEpic() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Audio Toggle */}
-      <button
-        className="fixed bottom-4 right-4 z-30 p-3 bg-gray-900/80 backdrop-blur-xl hover:bg-gray-800 rounded-full border border-gray-700 transition-colors"
-        title="Audio controls (future)"
-      >
-        🔇
-      </button>
     </main>
   )
 }
