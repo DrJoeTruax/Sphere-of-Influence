@@ -543,6 +543,256 @@ LEFT JOIN comments c ON p.id = c.author_id
 GROUP BY p.id, p.username, p.display_name, p.reputation_score;
 
 -- =============================================================================
+-- PROOF STATION ONE (THE NADER INSTITUTE)
+-- =============================================================================
+-- Tables for orbital proof-of-work verification system
+-- Implements N.A.Dr. (Non-Academic Doctor) philosophy
+
+-- Proof fields/categories
+CREATE TABLE proof_fields (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  slug TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  color_code TEXT DEFAULT '#3B82F6', -- For UI categorization
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Verified proofs (doctoral-level works)
+CREATE TABLE proofs (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  author_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+
+  -- Core proof data
+  name TEXT NOT NULL,
+  field_id UUID REFERENCES proof_fields(id) ON DELETE SET NULL,
+  proof_links TEXT[] DEFAULT '{}', -- URLs to evidence
+  description TEXT,
+
+  -- Verification
+  hash TEXT UNIQUE, -- Blockchain hash for immutability
+  polygon_timestamp TEXT, -- Polygon network timestamp
+  verified_at TIMESTAMP WITH TIME ZONE,
+
+  -- Metrics
+  impact_score INT DEFAULT 0,
+  endorsement_count INT DEFAULT 0,
+  view_count INT DEFAULT 0,
+
+  -- Metadata
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+  -- Pillar position in 3D space (for rendering)
+  pillar_position JSONB -- {x, y, z, rotation}
+);
+
+-- Peer endorsements (signatures of support)
+CREATE TABLE endorsements (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  proof_id UUID REFERENCES proofs(id) ON DELETE CASCADE,
+  endorser_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+
+  -- Endorsement content
+  comment TEXT,
+  credibility_score INT CHECK (credibility_score BETWEEN 1 AND 5) DEFAULT 5,
+
+  -- Verification
+  signature TEXT, -- Cryptographic signature
+
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+  UNIQUE(proof_id, endorser_id) -- One endorsement per proof per user
+);
+
+-- Defense sessions (optional public defenses)
+CREATE TABLE defense_sessions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  proof_id UUID REFERENCES proofs(id) ON DELETE CASCADE,
+
+  -- Session data
+  title TEXT NOT NULL,
+  description TEXT,
+  defense_date TIMESTAMP WITH TIME ZONE,
+  recording_url TEXT,
+  transcript_url TEXT,
+
+  -- Participants
+  defenders TEXT[] DEFAULT '{}', -- Array of defender names/IDs
+  reviewers TEXT[] DEFAULT '{}', -- Array of reviewer names/IDs
+
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Station activity log (for transparency)
+CREATE TABLE station_activity (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+
+  activity_type TEXT CHECK (activity_type IN (
+    'proof_submitted',
+    'proof_endorsed',
+    'defense_scheduled',
+    'proof_verified',
+    'station_visited'
+  )),
+
+  target_id UUID, -- proof_id or defense_id
+  details JSONB,
+
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- =============================================================================
+-- PROOF STATION RLS POLICIES
+-- =============================================================================
+
+-- Proofs are viewable by everyone (transparency)
+ALTER TABLE proofs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Proofs are viewable by everyone"
+ON proofs FOR SELECT
+USING (true);
+
+CREATE POLICY "Users can create their own proofs"
+ON proofs FOR INSERT
+WITH CHECK (auth.uid() = author_id);
+
+CREATE POLICY "Authors can update their own proofs"
+ON proofs FOR UPDATE
+USING (auth.uid() = author_id);
+
+-- Endorsements are viewable by everyone
+ALTER TABLE endorsements ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Endorsements are viewable by everyone"
+ON endorsements FOR SELECT
+USING (true);
+
+CREATE POLICY "Users can endorse proofs"
+ON endorsements FOR INSERT
+WITH CHECK (auth.uid() = endorser_id);
+
+-- Defense sessions are viewable by everyone
+ALTER TABLE defense_sessions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Defense sessions are viewable by everyone"
+ON defense_sessions FOR SELECT
+USING (true);
+
+-- Station activity is viewable by everyone (transparency)
+ALTER TABLE station_activity ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Station activity is viewable by everyone"
+ON station_activity FOR SELECT
+USING (true);
+
+-- =============================================================================
+-- PROOF STATION INDEXES
+-- =============================================================================
+
+CREATE INDEX idx_proofs_author ON proofs(author_id);
+CREATE INDEX idx_proofs_field ON proofs(field_id);
+CREATE INDEX idx_proofs_hash ON proofs(hash);
+CREATE INDEX idx_proofs_impact ON proofs(impact_score DESC);
+CREATE INDEX idx_endorsements_proof ON endorsements(proof_id);
+CREATE INDEX idx_endorsements_endorser ON endorsements(endorser_id);
+CREATE INDEX idx_defense_proof ON defense_sessions(proof_id);
+CREATE INDEX idx_station_activity_user ON station_activity(user_id);
+CREATE INDEX idx_station_activity_type ON station_activity(activity_type);
+
+-- =============================================================================
+-- PROOF STATION TRIGGERS
+-- =============================================================================
+
+-- Update endorsement count on proof when endorsement added
+CREATE OR REPLACE FUNCTION update_proof_endorsement_count()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    UPDATE proofs
+    SET endorsement_count = endorsement_count + 1
+    WHERE id = NEW.proof_id;
+  ELSIF TG_OP = 'DELETE' THEN
+    UPDATE proofs
+    SET endorsement_count = endorsement_count - 1
+    WHERE id = OLD.proof_id;
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_update_endorsement_count
+AFTER INSERT OR DELETE ON endorsements
+FOR EACH ROW
+EXECUTE FUNCTION update_proof_endorsement_count();
+
+-- Update proof updated_at timestamp
+CREATE TRIGGER update_proof_timestamp
+BEFORE UPDATE ON proofs
+FOR EACH ROW
+EXECUTE FUNCTION update_timestamp();
+
+-- Log station activity on proof creation
+CREATE OR REPLACE FUNCTION log_proof_submission()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO station_activity (user_id, activity_type, target_id, details)
+  VALUES (
+    NEW.author_id,
+    'proof_submitted',
+    NEW.id,
+    jsonb_build_object('name', NEW.name, 'field_id', NEW.field_id)
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_log_proof_submission
+AFTER INSERT ON proofs
+FOR EACH ROW
+EXECUTE FUNCTION log_proof_submission();
+
+-- =============================================================================
+-- PROOF STATION SEED DATA
+-- =============================================================================
+
+-- Insert proof fields
+INSERT INTO proof_fields (slug, name, description, color_code) VALUES
+('ethics', 'Ethics', 'Moral philosophy and ethical frameworks', '#8B5CF6'),
+('ai-safety', 'AI Safety', 'Artificial intelligence alignment and safety', '#3B82F6'),
+('empathy', 'Empathy Studies', 'Research on emotional intelligence and compassion', '#EC4899'),
+('mental-health', 'Mental Health', 'Psychology, therapy, and wellness research', '#10B981'),
+('governance', 'Governance', 'Democratic systems and organizational structures', '#F59E0B'),
+('stewardship', 'Stewardship', 'Environmental and resource management', '#14B8A6'),
+('education', 'Education', 'Learning systems and pedagogical innovation', '#EF4444'),
+('peace', 'Peace Studies', 'Conflict resolution and nonviolent communication', '#06B6D4');
+
+-- =============================================================================
+-- PROOF STATION VIEWS
+-- =============================================================================
+
+-- View for active proofs with full details
+CREATE OR REPLACE VIEW active_proofs_view AS
+SELECT
+  p.id,
+  p.name,
+  p.description,
+  p.hash,
+  p.impact_score,
+  p.endorsement_count,
+  p.view_count,
+  p.created_at,
+  pr.username as author_username,
+  pr.display_name as author_name,
+  pf.name as field_name,
+  pf.color_code as field_color
+FROM proofs p
+LEFT JOIN profiles pr ON p.author_id = pr.id
+LEFT JOIN proof_fields pf ON p.field_id = pf.id
+ORDER BY p.impact_score DESC, p.created_at DESC;
+
+-- =============================================================================
 -- NOTES
 -- =============================================================================
 -- This schema implements the 7 Immutable Laws through:
