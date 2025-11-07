@@ -6,6 +6,7 @@ import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
 import * as THREE from 'three'
 import Earth from './Earth'
 import SpaceStation from './SpaceStation'
+import NaderSatellite from './NaderSatellite'
 
 interface SolarSystemProps {
   onCameraAnimationComplete?: () => void
@@ -112,6 +113,12 @@ export default function SolarSystem({
       {/* Space Station orbiting Earth */}
       <SpaceStation
         onClick={() => onHubSelect?.('space-station')}
+        showLabel={showEarthDetails}
+      />
+
+      {/* Proof Station One (Nader Satellite) orbiting Earth */}
+      <NaderSatellite
+        onClick={() => onHubSelect?.('nader-station')}
         showLabel={showEarthDetails}
       />
 
