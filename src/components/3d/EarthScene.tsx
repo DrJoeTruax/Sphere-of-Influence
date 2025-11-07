@@ -4,7 +4,9 @@ import { useRef, useEffect, useState, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
-import OrbitingEarthSystem from './OrbitingEarthSystem'
+import EnhancedEarth from './EnhancedEarth'
+import SpaceStation from './SpaceStation'
+import NaderSatellite from './NaderSatellite'
 import EnhancedStarfield from './EnhancedStarfield'
 import Planet from './Planet'
 import SphereOfInfluenceRing from './SphereOfInfluenceRing'
@@ -208,8 +210,8 @@ export default function EarthScene({
   showEarthDetails = false,
   autoZoom = true
 }: EarthSceneProps) {
-  // This ref tracks Earth's orbital position
-  const earthPos = useRef(new THREE.Vector3(0, 0, 0))
+  // Earth is stationary at the center [0,0,0] - this is the focal point
+  const earthCenter = useRef(new THREE.Vector3(0, 0, 0))
   const sunRef = useRef<THREE.Mesh>(null)
 
   // Rotate sun slowly
@@ -267,13 +269,26 @@ export default function EarthScene({
         color="#d4a15f"
       />
 
-      {/* Earth orbiting the Sun (with satellites orbiting Earth) */}
-      <OrbitingEarthSystem
-        onHubSelect={onHubSelect}
-        showLabels={showEarthDetails}
-        selectedHubIndex={cycleIndex}
-        posRef={earthPos}
-      />
+      {/* Earth at the center [0, 0, 0] - THE FOCAL POINT */}
+      <group position={[0, 0, 0]}>
+        <EnhancedEarth
+          onHubSelect={onHubSelect}
+          showLabels={showEarthDetails}
+          selectedHubIndex={cycleIndex}
+        />
+
+        {/* Space Station orbiting Earth */}
+        <SpaceStation
+          onClick={() => onHubSelect?.('space-station')}
+          showLabel={showEarthDetails}
+        />
+
+        {/* Nader Satellite orbiting Earth */}
+        <NaderSatellite
+          onClick={() => onHubSelect?.('nader-station')}
+          showLabel={showEarthDetails}
+        />
+      </group>
 
       {/* Outer Planets */}
       <Planet
@@ -322,7 +337,7 @@ export default function EarthScene({
 
       {/* Camera Controller */}
       <CameraController
-        target={earthPos}
+        target={earthCenter}
         onZoomComplete={() => onCameraAnimationComplete?.()}
         cycleIndex={cycleIndex}
       />
