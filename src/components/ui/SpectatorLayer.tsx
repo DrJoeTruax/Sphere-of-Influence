@@ -142,34 +142,53 @@ export default function SpectatorLayer({
         </div>
       </div>
 
-      {/* --- Personal Impact (Bottom Left) --- */}
-      <div className="fixed bottom-4 left-4 bg-black/70 backdrop-blur-sm border border-gray-800 rounded-lg p-4 z-40 w-64 hidden md:block">
-        <div className="text-sm font-bold text-blue-400 mb-3 uppercase tracking-wider">YOUR CONTRIBUTION</div>
-        <div className="space-y-2 text-xs">
-          <div className="text-gray-300">
-            👁️ You are witness #{formatNumber(stats.totalWitnesses)}
-          </div>
-          <div className="text-gray-300">
-            🔗 Share to boost
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-gray-400">Your hope level:</span>
-            <div className="flex gap-1">
-              {[1, 2, 3, 4, 5].map((level) => (
-                <button
-                  key={level}
-                  onClick={() => setHopeLevel(level)}
-                  className={`text-lg transition-opacity ${level <= hopeLevel ? 'opacity-100' : 'opacity-30 hover:opacity-70'}`}
-                  aria-label={`Set hope level to ${level}`}
-                >
-                  {level === 1 ? '😞' : level === 2 ? '😐' : level === 3 ? '🙂' : level === 4 ? '😊' : '🤩'}
-                </button>
-              ))}
+      {/* --- Master Regional Hub List (Bottom Left) --- */}
+      <div className="fixed bottom-4 left-4 bg-black/80 backdrop-blur-sm border border-gray-700 rounded-lg p-4 z-40 w-80 max-h-[70vh] overflow-y-auto hidden md:block">
+        <div className="text-sm font-bold text-blue-400 mb-3 uppercase tracking-wider text-center border-b border-gray-700 pb-2">
+          11 REGIONAL HUBS + SPACE STATION
+        </div>
+        <div className="space-y-1 text-xs font-mono">
+          {regionalHubs.map((hub, index) => {
+            const views = getViewCount(hub.name)
+            const emoji = index < 2 ? '🌎' : index < 6 ? '🌍' : '🌏'
+            const isSelected = cycleIndex === index
+            return (
+              <button
+                key={hub.name}
+                onClick={() => {
+                  setCycleIndex(index)
+                  onSelectHub(hub.name)
+                }}
+                className={`w-full text-left px-2 py-1 rounded transition-colors ${
+                  isSelected ? 'bg-blue-900/50 border border-blue-500' : 'hover:bg-gray-800'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex-shrink-0">{emoji}</span>
+                  <span className="flex-1 truncate">{hub.name}</span>
+                  <span className="text-green-400">{formatNumber(views)}</span>
+                  <span className="text-gray-500">◉</span>
+                  <span className="text-gray-400 text-[10px]">EN</span>
+                </div>
+              </button>
+            )
+          })}
+          {/* Space Station */}
+          <button
+            onClick={() => onSelectHub('space-station')}
+            className="w-full text-left px-2 py-1 rounded hover:bg-gray-800 transition-colors border-t border-gray-700 mt-2 pt-2"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="flex-shrink-0">🛰️</span>
+              <span className="flex-1 truncate">Space Station</span>
+              <span className="text-green-400">{formatNumber(stats.totalWitnesses)}</span>
+              <span className="text-gray-500">◉</span>
+              <span className="text-gray-400 text-[10px]">ALL</span>
             </div>
-          </div>
-          <button className="w-full mt-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white text-xs font-bold uppercase tracking-wider transition-colors">
-            🔔 Get notified
           </button>
+        </div>
+        <div className="text-center text-gray-500 text-[10px] mt-3 pt-2 border-t border-gray-700">
+          Click any hub to select • Arrow keys to cycle
         </div>
       </div>
 

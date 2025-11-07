@@ -79,9 +79,13 @@ export default function OrbitingEarthSystem({
 // Moon component orbiting Earth
 function Moon() {
   const moonRef = useRef<THREE.Mesh>(null)
-  const moonOrbitRadius = 2.5
+  const moonOrbitRadius = 6.0 // Farther than both satellites
   const moonSize = 0.4
-  const moonOrbitSpeed = 2.0 // Faster orbit for visibility
+  // Real moon orbits Earth every ~27.3 days, Earth orbits sun every ~365 days
+  // Ratio is ~13.4:1, so moon should be ~13.4x slower than Earth's orbit
+  // Earth's orbit period is 75 (orbitPeriod in parent), and time is multiplied by 0.1 in useFrame
+  // So effective Earth speed is 0.1/75. Moon should be 13.4x slower: 0.1/(75*13.4) ≈ 0.0001
+  const moonOrbitSpeed = 0.0001
 
   useFrame(({ clock }) => {
     if (moonRef.current) {

@@ -15,11 +15,11 @@ export default function NaderSatellite({ onClick, showLabel = false }: NaderSate
   const shellRef = useRef<THREE.Mesh>(null)
   const ringRef = useRef<THREE.Group>(null)
 
-  // Orbit around Earth at different altitude than space station
+  // Orbit around Earth at different altitude than space station - positioned between Earth and Moon
   useFrame((state) => {
     if (satelliteRef.current) {
       const time = state.clock.elapsedTime * 0.15 // Slightly slower orbit
-      const radius = 5 // Farther out than space station
+      const radius = 4.0 // Between Space Station (2.5) and Moon (6)
       satelliteRef.current.position.x = Math.cos(time + Math.PI) * radius // Offset phase
       satelliteRef.current.position.z = Math.sin(time + Math.PI) * radius
       satelliteRef.current.position.y = 1 // Higher altitude

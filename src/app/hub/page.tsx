@@ -48,6 +48,12 @@ export default function HubSelectionPage() {
 
   // Keyboard navigation (11 hubs now, removed Global Research)
   useEffect(() => {
+    const regionalHubsList = [
+      'north-america', 'latin-america', 'western-europe', 'eastern-europe',
+      'middle-east', 'africa', 'india', 'china', 'southeast-asia',
+      'east-asia', 'oceania'
+    ]
+
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight') {
         e.preventDefault()
@@ -55,12 +61,17 @@ export default function HubSelectionPage() {
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault()
         setCycleIndex(prev => (prev - 1 + 11) % 11)
+      } else if (e.key === 'Enter') {
+        e.preventDefault()
+        // Select the currently cycled hub
+        const hubId = regionalHubsList[cycleIndex]
+        handleHubSelect(hubId)
       }
     }
 
     window.addEventListener('keydown', handleKeyPress)
     return () => window.removeEventListener('keydown', handleKeyPress)
-  }, [])
+  }, [cycleIndex])
 
   return (
     <main className="relative h-screen w-screen bg-black text-white overflow-hidden">

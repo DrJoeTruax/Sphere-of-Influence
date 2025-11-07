@@ -18,7 +18,7 @@ export default function AsteroidBelt() {
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2
       const radius = innerRadius + Math.random() * (outerRadius - innerRadius)
-      const yVariation = (Math.random() - 0.5) * 5 // Small vertical spread
+      const yVariation = (Math.random() - 0.5) * 2.5 // Half the vertical spread
 
       positions[i * 3] = Math.cos(angle) * radius
       positions[i * 3 + 1] = yVariation

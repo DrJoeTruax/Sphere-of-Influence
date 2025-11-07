@@ -14,9 +14,12 @@ export default function SphereOfInfluenceRing() {
   const radius = 880
   const tilt = 0.1
 
-  useFrame(() => {
+  useFrame(({ clock }) => {
     if (groupRef.current) {
+      // Rotate around Y axis (text moving around circumference)
       groupRef.current.rotation.y += 0.0005
+      // Add gyroscopic flip - slow rotation around X axis
+      groupRef.current.rotation.x = Math.sin(clock.getElapsedTime() * 0.1) * 0.3
     }
   })
 
@@ -33,13 +36,13 @@ export default function SphereOfInfluenceRing() {
               <Text3D
                 key={i}
                 font="/fonts/helvetiker_regular.typeface.json"
-                size={6}
-                height={1}
+                size={12}
+                height={2}
                 position={[x, 0, z]}
                 rotation={[0, -a - Math.PI / 2, 0]}
                 bevelEnabled
-                bevelThickness={0.4}
-                bevelSize={0.2}
+                bevelThickness={0.8}
+                bevelSize={0.4}
                 bevelSegments={3}
               >
                 {ch}
