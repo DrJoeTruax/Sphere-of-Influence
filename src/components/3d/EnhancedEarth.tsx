@@ -1,8 +1,8 @@
 'use client'
 
-import { useRef, useMemo, useState } from 'react'
+import { useRef, useMemo, useState, Suspense } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Sphere, Html, Line } from '@react-three/drei'
+import { Sphere, Html, Line, useTexture } from '@react-three/drei'
 import * as THREE from 'three'
 
 interface HubMarker {
@@ -251,6 +251,70 @@ function HubSatellite({
   )
 }
 
+// Earth with textures component
+function EarthWithTextures({ earthRef, cloudsRef }: {
+  earthRef: React.RefObject<THREE.Mesh>
+  cloudsRef: React.RefObject<THREE.Mesh>
+}) {
+  // Try to load textures - will fallback to solid colors if not found
+  const [colorMap, cloudMap, specularMap] = useTexture([
+    '/textures/8k_earth_daymap.jpg',
+    '/textures/8k_earth_clouds.jpg',
+    '/textures/8k_earth_specular_map.jpg'
+  ])
+
+  return (
+    <>
+      {/* Main Earth sphere with textures */}
+      <Sphere ref={earthRef} args={[EARTH_RADIUS, 128, 128]}>
+        <meshStandardMaterial
+          map={colorMap}
+          roughnessMap={specularMap}
+          metalness={0.1}
+        />
+      </Sphere>
+
+      {/* Cloud layer */}
+      <Sphere ref={cloudsRef} args={[EARTH_RADIUS + 0.02, 128, 128]}>
+        <meshStandardMaterial
+          map={cloudMap}
+          transparent
+          opacity={0.25}
+        />
+      </Sphere>
+    </>
+  )
+}
+
+// Fallback Earth with solid colors
+function EarthFallback({ earthRef, cloudsRef }: {
+  earthRef: React.RefObject<THREE.Mesh>
+  cloudsRef: React.RefObject<THREE.Mesh>
+}) {
+  return (
+    <>
+      {/* Main Earth sphere - solid color fallback */}
+      <Sphere ref={earthRef} args={[EARTH_RADIUS, 128, 128]}>
+        <meshStandardMaterial
+          color="#1e40af"
+          roughness={0.7}
+          metalness={0.1}
+        />
+      </Sphere>
+
+      {/* Cloud layer */}
+      <Sphere ref={cloudsRef} args={[EARTH_RADIUS + 0.02, 64, 64]}>
+        <meshStandardMaterial
+          color="#ffffff"
+          transparent
+          opacity={0.15}
+          roughness={1}
+        />
+      </Sphere>
+    </>
+  )
+}
+
 export default function EnhancedEarth({
   onHubSelect,
   hubs = DEFAULT_HUBS,
@@ -271,17 +335,10 @@ export default function EnhancedEarth({
 
   return (
     <group>
-      {/* Main Earth sphere - using solid color for now
-          To add textures: place planet_color.jpg, planet_normal.jpg, planet_rough.jpg,
-          planet_night.jpg, planet_clouds.jpg in /public/textures/ and uncomment the
-          texture loading code */}
-      <Sphere ref={earthRef} args={[EARTH_RADIUS, 128, 128]}>
-        <meshStandardMaterial
-          color="#1e40af"
-          roughness={0.7}
-          metalness={0.1}
-        />
-      </Sphere>
+      {/* Use Suspense to load textures with fallback */}
+      <Suspense fallback={<EarthFallback earthRef={earthRef} cloudsRef={cloudsRef} />}>
+        <EarthWithTextures earthRef={earthRef} cloudsRef={cloudsRef} />
+      </Suspense>
 
       {/* Atmosphere glow */}
       <Sphere args={[EARTH_RADIUS + 0.1, 64, 64]}>
@@ -290,16 +347,6 @@ export default function EnhancedEarth({
           transparent
           opacity={0.1}
           side={THREE.BackSide}
-        />
-      </Sphere>
-
-      {/* Cloud layer */}
-      <Sphere ref={cloudsRef} args={[EARTH_RADIUS + 0.02, 64, 64]}>
-        <meshStandardMaterial
-          color="#ffffff"
-          transparent
-          opacity={0.15}
-          roughness={1}
         />
       </Sphere>
 

@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useState, Suspense, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Canvas } from '@react-three/fiber'
 import { useRouter } from 'next/navigation'
-import EnhancedSolarSystem from '@/components/3d/EnhancedSolarSystem'
+import EarthScene from '@/components/3d/EarthScene'
+import SpectatorLayer from '@/components/ui/SpectatorLayer'
 import { useHubs } from '@/lib/hooks/useHubs'
 
 export default function HubSelectionPage() {
@@ -12,6 +13,7 @@ export default function HubSelectionPage() {
   const { hubs, loading: hubsLoading } = useHubs()
   const [showUI, setShowUI] = useState(false)
   const [selectedHub, setSelectedHub] = useState<string | null>(null)
+  const [cycleIndex, setCycleIndex] = useState(0)
 
   // Show UI after camera animation completes
   const handleCameraComplete = () => {
@@ -27,6 +29,10 @@ export default function HubSelectionPage() {
     setSelectedHub(hubId)
   }
 
+  const handleClearHub = () => {
+    setSelectedHub(null)
+  }
+
   const handleConfirmSelection = () => {
     if (selectedHub) {
       // Save hub selection
@@ -40,16 +46,43 @@ export default function HubSelectionPage() {
     }
   }
 
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') {
+        e.preventDefault()
+        setCycleIndex(prev => (prev + 1) % 12)
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault()
+        setCycleIndex(prev => (prev - 1 + 12) % 12)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyPress)
+    return () => window.removeEventListener('keydown', handleKeyPress)
+  }, [])
+
   return (
     <main className="relative h-screen w-screen bg-black text-white overflow-hidden">
+      {/* SpectatorLayer UI Overlay */}
+      <SpectatorLayer
+        selectedHub={selectedHub}
+        onClearHub={handleClearHub}
+        onSelectHub={handleHubSelect}
+        showUI={showUI}
+        cycleIndex={cycleIndex}
+        setCycleIndex={setCycleIndex}
+      />
+
       {/* 3D Scene */}
       <div className="absolute inset-0">
-        <Canvas>
+        <Canvas camera={{ fov: 60, near: 0.1, far: 5000 }} dpr={[1, 1.5]}>
           <Suspense fallback={null}>
-            <EnhancedSolarSystem
+            <EarthScene
               onCameraAnimationComplete={handleCameraComplete}
               showEarthDetails={showUI}
               onHubSelect={handleHubSelect}
+              cycleIndex={cycleIndex}
               autoZoom={true}
             />
           </Suspense>
@@ -71,72 +104,7 @@ export default function HubSelectionPage() {
                 transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
                 className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"
               />
-              <p className="text-xl">Approaching Solar System...</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Hub Selection UI */}
-      <AnimatePresence>
-        {showUI && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="absolute top-8 left-8 z-20 max-w-md"
-          >
-            <div className="bg-black/80 backdrop-blur-md rounded-lg p-6 border border-gray-800">
-              <h1 className="text-2xl font-bold mb-2">Select Your Hub</h1>
-              <p className="text-gray-400 text-sm mb-4">
-                Choose a regional hub or the Space Station.
-                <br />
-                Click a glowing marker on Earth.
-              </p>
-
-              {/* Hub list */}
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {hubsLoading ? (
-                  <div className="text-gray-500 text-sm">Loading hubs...</div>
-                ) : (
-                  hubs.map((hub) => (
-                    <button
-                      key={hub.id}
-                      onClick={() => handleHubSelect(hub.slug)}
-                      className={`w-full text-left p-3 rounded-lg transition-all ${
-                        selectedHub === hub.slug
-                          ? 'bg-blue-600 ring-2 ring-blue-400'
-                          : 'bg-gray-900 hover:bg-gray-800'
-                      }`}
-                    >
-                      <div className="font-semibold">{hub.name}</div>
-                      <div className="text-xs text-gray-400 mt-1">
-                        {hub.active_contributors > 0 ? (
-                          <span>
-                            👁 {hub.active_contributors} active
-                          </span>
-                        ) : (
-                          <span>New hub</span>
-                        )}
-                        {' • '}
-                        {hub.language_codes.join(', ').toUpperCase()}
-                      </div>
-                    </button>
-                  ))
-                )}
-              </div>
-
-              {/* Confirm button */}
-              {selectedHub && (
-                <motion.button
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  onClick={handleConfirmSelection}
-                  className="w-full mt-4 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-lg font-semibold transition-all"
-                >
-                  Enter {hubs.find(h => h.slug === selectedHub)?.name}
-                </motion.button>
-              )}
+              <p className="text-xl">Approaching Earth...</p>
             </div>
           </motion.div>
         )}
@@ -149,15 +117,15 @@ export default function HubSelectionPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1, duration: 1 }}
-            className="absolute bottom-8 right-8 z-20 bg-black/60 backdrop-blur-sm rounded-lg p-4 border border-gray-800 max-w-xs"
+            className="absolute top-20 right-8 z-20 bg-black/60 backdrop-blur-sm rounded-lg p-4 border border-gray-800 max-w-xs"
           >
             <h3 className="font-bold mb-2 text-sm">Controls</h3>
             <ul className="text-xs text-gray-400 space-y-1">
-              <li>🖱️ Click + drag to rotate view</li>
+              <li>🖱️ Click + drag to rotate Earth</li>
               <li>🔍 Scroll to zoom in/out</li>
-              <li>🎯 Click satellites to select hub</li>
-              <li>🪐 Explore the full solar system</li>
-              <li>⭕ Sphere of Influence ring at edge</li>
+              <li>⬅️➡️ Arrow keys to cycle regions</li>
+              <li>🎯 Click satellites to view hub details</li>
+              <li>🌍 Earth spins with regional hubs</li>
             </ul>
           </motion.div>
         )}
