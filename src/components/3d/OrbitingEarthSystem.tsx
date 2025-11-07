@@ -23,7 +23,7 @@ export default function OrbitingEarthSystem({
   const groupRef = useRef<THREE.Group>(null)
 
   // Earth's orbital parameters
-  const semiMajor = 52
+  const semiMajor = 104
   const eccentricity = 0.017
   const orbitPeriod = 75
   const semiMinor = semiMajor * Math.sqrt(1 - eccentricity ** 2)
@@ -57,6 +57,9 @@ export default function OrbitingEarthSystem({
           selectedHubIndex={selectedHubIndex}
         />
 
+        {/* Moon orbiting Earth */}
+        <Moon />
+
         {/* Space Station orbiting Earth */}
         <SpaceStation
           onClick={() => onHubSelect?.('space-station')}
@@ -70,6 +73,29 @@ export default function OrbitingEarthSystem({
         />
       </group>
     </>
+  )
+}
+
+// Moon component orbiting Earth
+function Moon() {
+  const moonRef = useRef<THREE.Mesh>(null)
+  const moonOrbitRadius = 2.5
+  const moonSize = 0.4
+  const moonOrbitSpeed = 2.0 // Faster orbit for visibility
+
+  useFrame(({ clock }) => {
+    if (moonRef.current) {
+      const t = clock.getElapsedTime() * moonOrbitSpeed
+      moonRef.current.position.x = Math.cos(t) * moonOrbitRadius
+      moonRef.current.position.z = Math.sin(t) * moonOrbitRadius
+    }
+  })
+
+  return (
+    <mesh ref={moonRef}>
+      <sphereGeometry args={[moonSize, 32, 32]} />
+      <meshStandardMaterial color="#c0c0c0" roughness={0.9} metalness={0.1} />
+    </mesh>
   )
 }
 
