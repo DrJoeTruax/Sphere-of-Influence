@@ -4,7 +4,7 @@ import { useState, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Canvas } from '@react-three/fiber'
 import { useRouter } from 'next/navigation'
-import SolarSystem from '@/components/3d/SolarSystem'
+import EnhancedSolarSystem from '@/components/3d/EnhancedSolarSystem'
 import { useHubs } from '@/lib/hooks/useHubs'
 
 export default function HubSelectionPage() {
@@ -46,7 +46,7 @@ export default function HubSelectionPage() {
       <div className="absolute inset-0">
         <Canvas>
           <Suspense fallback={null}>
-            <SolarSystem
+            <EnhancedSolarSystem
               onCameraAnimationComplete={handleCameraComplete}
               showEarthDetails={showUI}
               onHubSelect={handleHubSelect}
@@ -71,7 +71,7 @@ export default function HubSelectionPage() {
                 transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
                 className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"
               />
-              <p className="text-xl">Approaching Earth...</p>
+              <p className="text-xl">Approaching Solar System...</p>
             </div>
           </motion.div>
         )}
@@ -155,8 +155,9 @@ export default function HubSelectionPage() {
             <ul className="text-xs text-gray-400 space-y-1">
               <li>🖱️ Click + drag to rotate view</li>
               <li>🔍 Scroll to zoom in/out</li>
-              <li>🎯 Click blue markers to select hub</li>
-              <li>🛸 Purple station = Global hub</li>
+              <li>🎯 Click satellites to select hub</li>
+              <li>🪐 Explore the full solar system</li>
+              <li>⭕ Sphere of Influence ring at edge</li>
             </ul>
           </motion.div>
         )}
