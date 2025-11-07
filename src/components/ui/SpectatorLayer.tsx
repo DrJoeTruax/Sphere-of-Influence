@@ -59,11 +59,20 @@ export default function SpectatorLayer({
   cycleIndex,
   setCycleIndex
 }: SpectatorLayerProps) {
-  const [stats, setStats] = useState(getGlobalStats())
+  const [mounted, setMounted] = useState(false)
+  const [stats, setStats] = useState({ totalWitnesses: 0, liveNow: 0, hopeIndex: 84 })
   const [witnesses, setWitnesses] = useState<string[]>([])
   const [hopeLevel, setHopeLevel] = useState(3)
 
+  // Initialize stats on client only
   useEffect(() => {
+    setMounted(true)
+    setStats(getGlobalStats())
+  }, [])
+
+  useEffect(() => {
+    if (!mounted) return
+
     let lastStatsUpdate = Date.now()
     let lastWitnessUpdate = Date.now()
     let rafId: number
@@ -86,7 +95,7 @@ export default function SpectatorLayer({
     }
     rafId = requestAnimationFrame(animate)
     return () => cancelAnimationFrame(rafId)
-  }, [])
+  }, [mounted])
 
   const handleNextHub = (e: React.MouseEvent) => {
     e.stopPropagation()
