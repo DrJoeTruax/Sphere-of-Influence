@@ -63,11 +63,19 @@ export default function SpectatorLayer({
   const [stats, setStats] = useState({ totalWitnesses: 0, liveNow: 0, hopeIndex: 84 })
   const [witnesses, setWitnesses] = useState<string[]>([])
   const [hopeLevel, setHopeLevel] = useState(3)
+  const [hubViews, setHubViews] = useState<Record<string, number>>({})
 
   // Initialize stats on client only
   useEffect(() => {
     setMounted(true)
     setStats(getGlobalStats())
+
+    // Initialize hub views
+    const views: Record<string, number> = {}
+    regionalHubs.forEach(hub => {
+      views[hub.name] = getViewCount(hub.name)
+    })
+    setHubViews(views)
   }, [])
 
   useEffect(() => {
@@ -84,6 +92,14 @@ export default function SpectatorLayer({
       const now = Date.now()
       if (now - lastStatsUpdate >= 3000) {
         setStats(getGlobalStats())
+
+        // Update hub views
+        const views: Record<string, number> = {}
+        regionalHubs.forEach(hub => {
+          views[hub.name] = getViewCount(hub.name)
+        })
+        setHubViews(views)
+
         lastStatsUpdate = now
       }
       if (now - lastWitnessUpdate >= 2000) {
@@ -158,7 +174,7 @@ export default function SpectatorLayer({
         </div>
         <div className="space-y-1 text-xs font-mono">
           {regionalHubs.map((hub, index) => {
-            const views = getViewCount(hub.name)
+            const views = hubViews[hub.name] || 0
             const emoji = index < 2 ? '🌎' : index < 6 ? '🌍' : '🌏'
             const isSelected = cycleIndex === index
             return (
