@@ -19,6 +19,11 @@ export default function HubSelectionPage() {
   }
 
   const handleHubSelect = (hubId: string) => {
+    // Special case: Nader Station navigates directly to proof station
+    if (hubId === 'nader-station') {
+      router.push('/planets/nader')
+      return
+    }
     setSelectedHub(hubId)
   }
 
