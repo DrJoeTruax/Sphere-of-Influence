@@ -235,8 +235,8 @@ export default function EarthScene({
       <pointLight position={[0, 0, 0]} intensity={3} color="#fff5b3" />
       <directionalLight position={[-10, 5, 5]} intensity={0.5} />
 
-      {/* Starfield background */}
-      <EnhancedStarfield count={9000} radius={2000} />
+      {/* Starfield background - stars far from solar system */}
+      <EnhancedStarfield count={9000} />
 
       {/* Sun at center of solar system */}
       <mesh ref={sunRef} position={[0, 0, 0]}>
@@ -300,50 +300,50 @@ export default function EarthScene({
 
       <Planet
         name="Jupiter"
-        size={1.1}
+        size={8.0}
         semiMajor={170}
         eccentricity={0.049}
         orbitPeriod={890}
         color="#b08968"
         moons={[
-          { size: 0.11, distance: 1.8, color: "#c4a55a", orbitSpeed: 0.5 },  // Io
-          { size: 0.09, distance: 2.3, color: "#c9b895", orbitSpeed: 0.35 }, // Europa
-          { size: 0.15, distance: 3.0, color: "#8b7d6b", orbitSpeed: 0.2 },  // Ganymede
-          { size: 0.14, distance: 3.8, color: "#6d6354", orbitSpeed: 0.12 }  // Callisto
+          { size: 0.11, distance: 8.5, color: "#c4a55a", orbitSpeed: 0.5 },  // Io
+          { size: 0.09, distance: 10.0, color: "#c9b895", orbitSpeed: 0.35 }, // Europa
+          { size: 0.15, distance: 12.0, color: "#8b7d6b", orbitSpeed: 0.2 },  // Ganymede
+          { size: 0.14, distance: 14.0, color: "#6d6354", orbitSpeed: 0.12 }  // Callisto
         ]}
       />
       <Planet
         name="Saturn"
-        size={1.0}
+        size={7.0}
         semiMajor={260}
         eccentricity={0.056}
         orbitPeriod={2200}
         color="#cdb79e"
         rings={{
-          innerRadius: 1.3,
-          outerRadius: 2.3,
+          innerRadius: 8.0,
+          outerRadius: 13.0,
           color: "#d4c5a0"
         }}
         moons={[
-          { size: 0.15, distance: 3.2, color: "#daa855", orbitSpeed: 0.1 } // Titan
+          { size: 0.15, distance: 15.0, color: "#daa855", orbitSpeed: 0.1 } // Titan
         ]}
       />
       <Planet
         name="Uranus"
-        size={0.8}
+        size={3.5}
         semiMajor={360}
         eccentricity={0.047}
         orbitPeriod={6400}
         color="#7ec8e3"
         rings={{
-          innerRadius: 1.1,
-          outerRadius: 1.6,
+          innerRadius: 4.0,
+          outerRadius: 6.0,
           color: "#95b3c9"
         }}
       />
       <Planet
         name="Neptune"
-        size={0.7}
+        size={3.5}
         semiMajor={440}
         eccentricity={0.009}
         orbitPeriod={12800}

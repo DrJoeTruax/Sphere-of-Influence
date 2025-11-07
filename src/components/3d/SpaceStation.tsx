@@ -14,11 +14,11 @@ export default function SpaceStation({ onClick, showLabel = false }: SpaceStatio
   const stationRef = useRef<THREE.Group>(null)
   const ringRef = useRef<THREE.Mesh>(null)
 
-  // Orbit around Earth
+  // Orbit around Earth - positioned between Earth and Moon
   useFrame((state) => {
     if (stationRef.current) {
       const time = state.clock.elapsedTime * 0.2
-      const radius = 4
+      const radius = 2.5 // Between Earth (0) and Moon (6)
       stationRef.current.position.x = Math.cos(time) * radius
       stationRef.current.position.z = Math.sin(time) * radius
       stationRef.current.position.y = 0.5

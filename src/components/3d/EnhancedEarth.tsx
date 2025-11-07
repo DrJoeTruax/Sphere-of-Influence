@@ -4,6 +4,7 @@ import { useRef, useMemo, useState, Suspense } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Sphere, Html, Line, useTexture } from '@react-three/drei'
 import * as THREE from 'three'
+import HolographicScreen from './HolographicScreen'
 
 interface HubMarker {
   id: string
@@ -220,6 +221,7 @@ function HubSatellite({
 }) {
   const [lat, lon] = hub.position
   const position = useMemo(() => latLonToVector3(lat, lon, EARTH_RADIUS + 0.3), [lat, lon])
+  const screenPosition = useMemo(() => latLonToVector3(lat, lon, EARTH_RADIUS + 0.6), [lat, lon])
   const [isHovered, setIsHovered] = useState(false)
 
   return (
@@ -249,26 +251,15 @@ function HubSatellite({
         />
       </mesh>
 
-      {/* Label */}
-      {(showLabel || isHovered) && (
-        <Html
-          position={[0, 0.1, 0]}
-          center
-          distanceFactor={6}
-          style={{
-            pointerEvents: 'none',
-            userSelect: 'none',
-          }}
-        >
-          <div className="bg-black/90 text-white px-3 py-2 rounded-lg text-xs whitespace-nowrap backdrop-blur-sm border border-cyan-500/50 shadow-lg">
-            <div className="font-bold" style={{ color: hub.color }}>{hub.name}</div>
-            {hub.activeContributors > 0 && (
-              <div className="text-[10px] text-gray-400">
-                {hub.activeContributors} active
-              </div>
-            )}
-          </div>
-        </Html>
+      {/* Holographic Screen - always visible when showLabel is true */}
+      {showLabel && (
+        <HolographicScreen
+          hubName={hub.name}
+          contributors={hub.activeContributors}
+          languages={hub.languages}
+          color={hub.color || '#3B82F6'}
+          position={[0, 0.15, 0]}
+        />
       )}
     </group>
   )
