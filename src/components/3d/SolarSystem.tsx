@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
 import * as THREE from 'three'
@@ -24,12 +24,14 @@ export default function SolarSystem({
   const cameraRef = useRef<THREE.PerspectiveCamera>(null)
   const sunRef = useRef<THREE.Mesh>(null)
   const animationProgress = useRef(0)
+  const [isAnimating, setIsAnimating] = useState(autoZoom)
   const { camera } = useThree()
 
   // Animate camera from outer space to Earth
   useEffect(() => {
     if (autoZoom && cameraRef.current) {
       animationProgress.current = 0
+      setIsAnimating(true)
     }
   }, [autoZoom])
 
@@ -45,6 +47,7 @@ export default function SolarSystem({
 
       if (animationProgress.current >= 1) {
         animationProgress.current = 1
+        setIsAnimating(false)
         if (onCameraAnimationComplete) {
           onCameraAnimationComplete()
         }
@@ -74,7 +77,7 @@ export default function SolarSystem({
 
       {/* Orbit controls (disabled during animation) */}
       <OrbitControls
-        enabled={!autoZoom || animationProgress.current >= 1}
+        enabled={!isAnimating}
         enableDamping
         dampingFactor={0.05}
         minDistance={4}
