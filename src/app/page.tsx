@@ -7,11 +7,12 @@ import { Canvas } from '@react-three/fiber'
 import dynamic from 'next/dynamic'
 import AnimatedCounter from '@/components/ui/AnimatedCounter'
 import { use3DTilt } from '@/hooks/use3DTilt'
+import { detectUserLanguage, translate, LANGUAGES } from '@/utils/languages'
 
 // Dynamic imports for 3D components
-const UniverseBackground = dynamic(() => import('@/components/3d/UniverseBackground'), { ssr: false })
+const BlackHole = dynamic(() => import('@/components/3d/BlackHole'), { ssr: false })
+const GravitationalText = dynamic(() => import('@/components/3d/GravitationalText'), { ssr: false })
 const HolographicEarth = dynamic(() => import('@/components/3d/HolographicEarth'), { ssr: false })
-const Text3D = dynamic(() => import('@/components/3d/Text3D'), { ssr: false })
 
 // Law Card Component with 3D tilt
 function LawCard({ law, index }: { law: { name: string; desc: string }; index: number }) {
@@ -78,11 +79,18 @@ function LawCard({ law, index }: { law: { name: string; desc: string }; index: n
 export default function Home() {
   const { scrollYProgress } = useScroll()
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
+  const [lang, setLang] = useState('en')
+  const [showLanguageSelector, setShowLanguageSelector] = useState(false)
 
   // Parallax effects
   const heroY = useTransform(scrollYProgress, [0, 0.5], [0, 200])
   const heroOpacity = useTransform(scrollYProgress, [0, 0.3], [1, 0])
-  const earthRotation = useTransform(scrollYProgress, [0, 1], [0, Math.PI * 2])
+
+  // Auto-detect language on mount
+  useEffect(() => {
+    const detectedLang = detectUserLanguage()
+    setLang(detectedLang)
+  }, [])
 
   // Track mouse for parallax
   useEffect(() => {
@@ -105,40 +113,96 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-black text-white relative overflow-x-hidden">
-      {/* Fixed 3D Universe Background */}
+      {/* Fixed 3D Black Hole Background */}
       <div className="fixed inset-0 z-0">
-        <Canvas camera={{ position: [0, 0, 10], fov: 75 }}>
+        <Canvas camera={{ position: [0, 0, 30], fov: 75 }}>
           <Suspense fallback={null}>
-            <UniverseBackground count={3000} nebulaEnabled={true} />
+            <BlackHole position={[0, 0, -20]} size={5} />
+            <ambientLight intensity={0.3} />
+            <pointLight position={[20, 20, 20]} intensity={0.5} />
           </Suspense>
         </Canvas>
       </div>
 
-      {/* Hero Section */}
+      {/* Language Selector Button */}
+      <motion.button
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        onClick={() => setShowLanguageSelector(!showLanguageSelector)}
+        className="fixed top-4 right-4 z-50 px-4 py-2 bg-gray-900/80 backdrop-blur-xl border border-gray-700 rounded-lg hover:border-blue-500/50 transition-all"
+      >
+        🌍 {LANGUAGES.find(l => l.code === lang)?.nativeName || 'English'}
+      </motion.button>
+
+      {/* Language Selector Modal */}
+      <AnimatePresence>
+        {showLanguageSelector && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 backdrop-blur-xl z-50 flex items-center justify-center p-4"
+            onClick={() => setShowLanguageSelector(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-gray-900/90 backdrop-blur-xl rounded-2xl p-8 max-w-4xl w-full border border-gray-800/50 max-h-[80vh] overflow-y-auto"
+            >
+              <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                Select Your Language
+              </h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {LANGUAGES.map((language) => (
+                  <button
+                    key={language.code}
+                    onClick={() => {
+                      setLang(language.code)
+                      localStorage.setItem('breakthrough_language', language.code)
+                      setShowLanguageSelector(false)
+                    }}
+                    className={`p-4 rounded-lg text-left transition-all ${
+                      lang === language.code
+                        ? 'bg-blue-600/80 border-2 border-blue-400'
+                        : 'bg-gray-800/60 border border-gray-700/50 hover:bg-gray-700/60'
+                    }`}
+                  >
+                    <div className="font-semibold">{language.nativeName}</div>
+                    <div className="text-xs text-gray-400 mt-1">{language.name}</div>
+                    <div className="text-xs text-gray-500">{language.region}</div>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Hero Section with Gravitational Text */}
       <motion.section
         style={{ y: heroY, opacity: heroOpacity }}
         className="relative flex flex-col items-center justify-center min-h-screen px-4 text-center z-10"
       >
-        {/* 3D Title "Breakthrough" */}
+        {/* Gravitationally Warped Title */}
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 1, delay: 0.2 }}
-          className="w-full h-32 md:h-48 mb-4"
+          transition={{ duration: 1.5, delay: 0.5 }}
+          className="w-full h-48 md:h-64 mb-8"
         >
-          <Canvas camera={{ position: [0, 0, 8], fov: 75 }}>
+          <Canvas camera={{ position: [0, 0, 15], fov: 75 }}>
             <Suspense fallback={null}>
-              <Text3D
-                position={[0, 0, 0]}
-                fontSize={1.2}
+              <GravitationalText
+                position={[0, 3, 0]}
+                fontSize={2.5}
                 color="#ffffff"
-                glowColor="#A78BFA"
-                rotation={[-0.3, 0, 0]}
-                animate={true}
-                depth={0.3}
+                blackHolePosition={[0, 0, -20]}
+                blackHoleMass={150}
               >
-                Breakthrough
-              </Text3D>
+                {translate('heroTitle', lang)}
+              </GravitationalText>
               <ambientLight intensity={0.5} />
               <pointLight position={[10, 10, 10]} intensity={1} />
               <pointLight position={[-10, -10, -10]} intensity={0.5} color="#3B82F6" />
@@ -150,7 +214,7 @@ export default function Home() {
         <motion.div
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 1, delay: 0.5 }}
+          transition={{ duration: 1, delay: 1 }}
           className="w-48 h-48 md:w-64 md:h-64 mb-8"
         >
           <Canvas camera={{ position: [0, 0, 3], fov: 50 }}>
@@ -164,40 +228,39 @@ export default function Home() {
         <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 1 }}
+          transition={{ duration: 0.8, delay: 1.5 }}
           className="text-2xl md:text-3xl mb-4 max-w-3xl font-light"
         >
-          A global coordination platform for AGI development
+          {translate('heroSubtitle', lang)}
         </motion.p>
 
         <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 1.2 }}
+          transition={{ duration: 0.8, delay: 1.7 }}
           className="text-gray-400 mb-12 max-w-xl text-lg"
         >
-          Join 7 billion people in building artificial general intelligence
-          that respects human autonomy.
+          {translate('heroDescription', lang)}
         </motion.p>
 
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6, delay: 1.4 }}
+          transition={{ duration: 0.6, delay: 1.9 }}
           className="flex gap-4 mb-16"
         >
           <Link
             href="/enter"
             className="group relative px-8 py-4 bg-blue-600 hover:bg-blue-700 rounded-lg text-lg font-semibold transition-all duration-300 overflow-hidden"
           >
-            <span className="relative z-10">Enter the Platform</span>
+            <span className="relative z-10">{translate('enterPlatform', lang)}</span>
             <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           </Link>
           <Link
             href="/why"
             className="px-8 py-4 bg-gray-800/50 hover:bg-gray-700/50 backdrop-blur-xl border border-gray-700 hover:border-gray-600 rounded-lg text-lg font-semibold transition-all duration-300"
           >
-            Why This Matters
+            {translate('whyMatters', lang)}
           </Link>
         </motion.div>
 
@@ -213,7 +276,7 @@ export default function Home() {
         </motion.div>
       </motion.section>
 
-      {/* The 7 Immutable Laws - With Neural Network Background */}
+      {/* The 7 Immutable Laws */}
       <section className="relative py-32 px-4 z-10">
         <div className="max-w-6xl mx-auto">
           <motion.h2
@@ -223,10 +286,7 @@ export default function Home() {
             viewport={{ once: true }}
             className="text-4xl md:text-5xl font-bold mb-12 text-center"
           >
-            Built on{' '}
-            <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-              7 Immutable Laws
-            </span>
+            {translate('builtOn7Laws', lang)}
           </motion.h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -235,26 +295,6 @@ export default function Home() {
             ))}
           </div>
         </div>
-
-        {/* Background constellation lines */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-20" style={{ zIndex: -1 }}>
-          <motion.line
-            x1="10%" y1="10%" x2="90%" y2="90%"
-            stroke="url(#gradient1)"
-            strokeWidth="1"
-            initial={{ pathLength: 0 }}
-            whileInView={{ pathLength: 1 }}
-            transition={{ duration: 2, delay: 0.5 }}
-            viewport={{ once: true }}
-          />
-          <defs>
-            <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#3B82F6" stopOpacity="0" />
-              <stop offset="50%" stopColor="#8B5CF6" stopOpacity="1" />
-              <stop offset="100%" stopColor="#3B82F6" stopOpacity="0" />
-            </linearGradient>
-          </defs>
-        </svg>
       </section>
 
       {/* Platform Stats Section */}
@@ -267,14 +307,14 @@ export default function Home() {
             viewport={{ once: true }}
             className="text-4xl font-bold mb-16 text-center"
           >
-            A Platform Built for Scale
+            {translate('platformBuiltForScale', lang)}
           </motion.h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
             {[
-              { end: 13, suffix: '', label: 'Regional Hubs', sublabel: '12 regions + Space Station', color: 'blue' },
-              { end: 96.4, suffix: '%', label: 'Autonomy Score', sublabel: '14-Point Autonomy Test', color: 'purple' },
-              { end: 10, suffix: 'K+', label: 'Concurrent Users', sublabel: 'Designed for scale', color: 'green' }
+              { end: 13, suffix: '', label: translate('regionalHubs', lang), sublabel: '12 regions + Space Station', color: 'blue' },
+              { end: 96.4, suffix: '%', label: translate('autonomyScore', lang), sublabel: '14-Point Autonomy Test', color: 'purple' },
+              { end: 10, suffix: 'K+', label: translate('concurrentUsers', lang), sublabel: 'Designed for scale', color: 'green' }
             ].map((stat, index) => (
               <motion.div
                 key={stat.label}
@@ -379,21 +419,6 @@ export default function Home() {
           </a>
         </div>
       </footer>
-
-      {/* Custom animations */}
-      <style jsx global>{`
-        @keyframes gradient {
-          0%, 100% {
-            background-position: 0% 50%;
-          }
-          50% {
-            background-position: 100% 50%;
-          }
-        }
-        .animate-gradient {
-          animation: gradient 3s ease infinite;
-        }
-      `}</style>
     </main>
   )
 }
