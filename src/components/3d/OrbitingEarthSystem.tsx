@@ -23,7 +23,7 @@ export default function OrbitingEarthSystem({
   const groupRef = useRef<THREE.Group>(null)
 
   // Earth's orbital parameters
-  const semiMajor = 26
+  const semiMajor = 52
   const eccentricity = 0.017
   const orbitPeriod = 75
   const semiMinor = semiMajor * Math.sqrt(1 - eccentricity ** 2)

@@ -11,7 +11,7 @@ export default function SphereOfInfluenceRing() {
   const repeat = 4
   const fullText = Array(repeat).fill(text).join("")
   const chars = fullText.split("")
-  const radius = 220
+  const radius = 440
   const tilt = 0.1
 
   useFrame(() => {

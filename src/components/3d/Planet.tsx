@@ -30,6 +30,13 @@ function EllipticalOrbit({ semiMajor, eccentricity }: EllipticalOrbitProps) {
   )
 }
 
+interface Moon {
+  size: number
+  distance: number
+  color: string
+  orbitSpeed: number
+}
+
 interface PlanetProps {
   name: string
   size: number
@@ -38,6 +45,26 @@ interface PlanetProps {
   orbitPeriod: number
   color: string
   posRef?: React.MutableRefObject<THREE.Vector3>
+  rings?: {
+    innerRadius: number
+    outerRadius: number
+    color: string
+  }
+  moons?: Moon[]
+}
+
+// Moon component that orbits the planet
+function MoonOrbit({ moon, clockTime }: { moon: Moon; clockTime: number }) {
+  const angle = clockTime * moon.orbitSpeed
+  const x = Math.cos(angle) * moon.distance
+  const z = Math.sin(angle) * moon.distance
+
+  return (
+    <mesh position={[x, 0, z]}>
+      <sphereGeometry args={[moon.size, 16, 16]} />
+      <meshStandardMaterial color={moon.color} roughness={0.9} />
+    </mesh>
+  )
 }
 
 export default function Planet({
@@ -47,14 +74,19 @@ export default function Planet({
   eccentricity,
   orbitPeriod,
   color,
-  posRef
+  posRef,
+  rings,
+  moons
 }: PlanetProps) {
   const meshRef = useRef<THREE.Group>(null)
   const semiMinor = semiMajor * Math.sqrt(1 - eccentricity ** 2)
   const phaseOffset = useRef(Math.random() * Math.PI * 2)
+  const clockTime = useRef(0)
 
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime() * 0.1
+    clockTime.current = t
+
     const angle = (t / orbitPeriod) * Math.PI * 2 + phaseOffset.current
     const x = semiMajor * Math.cos(angle) - semiMajor * eccentricity
     const z = semiMinor * Math.sin(angle)
@@ -81,6 +113,25 @@ export default function Planet({
             metalness={0.25}
           />
         </mesh>
+
+        {/* Planetary rings if present */}
+        {rings && (
+          <mesh rotation={[Math.PI / 2.3, 0, 0]}>
+            <ringGeometry args={[rings.innerRadius, rings.outerRadius, 64]} />
+            <meshStandardMaterial
+              color={rings.color}
+              side={THREE.DoubleSide}
+              transparent
+              opacity={0.7}
+              roughness={0.8}
+            />
+          </mesh>
+        )}
+
+        {/* Moons if present */}
+        {moons?.map((moon, i) => (
+          <MoonOrbit key={i} moon={moon} clockTime={clockTime.current} />
+        ))}
       </group>
     </>
   )
