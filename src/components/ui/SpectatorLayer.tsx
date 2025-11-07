@@ -98,7 +98,9 @@ export default function SpectatorLayer({
     setCycleIndex(prev => (prev - 1 + regionalHubs.length) % regionalHubs.length)
   }
 
-  const currentCycledHub = regionalHubs[cycleIndex]
+  // Ensure cycleIndex is within bounds
+  const safeIndex = Math.min(cycleIndex, regionalHubs.length - 1)
+  const currentCycledHub = regionalHubs[safeIndex]
 
   const formatNumber = (num: number) => num.toLocaleString('en-US')
 

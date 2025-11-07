@@ -4,9 +4,7 @@ import { useRef, useEffect, useState, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
-import EnhancedEarth from './EnhancedEarth'
-import SpaceStation from './SpaceStation'
-import NaderSatellite from './NaderSatellite'
+import OrbitingEarthSystem from './OrbitingEarthSystem'
 import EnhancedStarfield from './EnhancedStarfield'
 import Planet from './Planet'
 import SphereOfInfluenceRing from './SphereOfInfluenceRing'
@@ -210,8 +208,8 @@ export default function EarthScene({
   showEarthDetails = false,
   autoZoom = true
 }: EarthSceneProps) {
-  // This ref is the static center [0,0,0] - Earth's position
-  const earthCenter = useRef(new THREE.Vector3(0, 0, 0))
+  // This ref tracks Earth's orbital position
+  const earthPos = useRef(new THREE.Vector3(0, 0, 0))
   const sunRef = useRef<THREE.Mesh>(null)
 
   // Rotate sun slowly
@@ -269,26 +267,13 @@ export default function EarthScene({
         color="#d4a15f"
       />
 
-      {/* Earth at the center [0, 0, 0] - NOT ORBITING */}
-      <group position={[0, 0, 0]}>
-        <EnhancedEarth
-          onHubSelect={onHubSelect}
-          showLabels={showEarthDetails}
-          selectedHubIndex={cycleIndex}
-        />
-
-        {/* Space Station orbiting Earth */}
-        <SpaceStation
-          onClick={() => onHubSelect?.('space-station')}
-          showLabel={showEarthDetails}
-        />
-
-        {/* Nader Satellite orbiting Earth */}
-        <NaderSatellite
-          onClick={() => onHubSelect?.('nader-station')}
-          showLabel={showEarthDetails}
-        />
-      </group>
+      {/* Earth orbiting the Sun (with satellites orbiting Earth) */}
+      <OrbitingEarthSystem
+        onHubSelect={onHubSelect}
+        showLabels={showEarthDetails}
+        selectedHubIndex={cycleIndex}
+        posRef={earthPos}
+      />
 
       {/* Outer Planets */}
       <Planet
@@ -337,7 +322,7 @@ export default function EarthScene({
 
       {/* Camera Controller */}
       <CameraController
-        target={earthCenter}
+        target={earthPos}
         onZoomComplete={() => onCameraAnimationComplete?.()}
         cycleIndex={cycleIndex}
       />
