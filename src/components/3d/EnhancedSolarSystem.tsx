@@ -4,10 +4,8 @@ import { useRef, useEffect, useState, Suspense } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera, Environment } from '@react-three/drei'
 import * as THREE from 'three'
-import EnhancedEarth from './EnhancedEarth'
+import OrbitingEarthSystem from './OrbitingEarthSystem'
 import Planet from './Planet'
-import SpaceStation from './SpaceStation'
-import NaderSatellite from './NaderSatellite'
 import SphereOfInfluenceRing from './SphereOfInfluenceRing'
 import EnhancedStarfield from './EnhancedStarfield'
 
@@ -142,25 +140,12 @@ export default function EnhancedSolarSystem({
         color="#d4a15f"
       />
 
-      {/* Earth at the focal point */}
-      <group position={[0, 0, 0]}>
-        <EnhancedEarth
-          onHubSelect={onHubSelect}
-          showLabels={showEarthDetails}
-        />
-
-        {/* Space Station orbiting Earth */}
-        <SpaceStation
-          onClick={() => onHubSelect?.('space-station')}
-          showLabel={showEarthDetails}
-        />
-
-        {/* Nader Satellite orbiting Earth */}
-        <NaderSatellite
-          onClick={() => onHubSelect?.('nader-station')}
-          showLabel={showEarthDetails}
-        />
-      </group>
+      {/* Earth orbiting the Sun (with satellites orbiting Earth) */}
+      <OrbitingEarthSystem
+        onHubSelect={onHubSelect}
+        showLabels={showEarthDetails}
+        posRef={earthPos}
+      />
 
       {/* Outer Planets */}
       <Planet
