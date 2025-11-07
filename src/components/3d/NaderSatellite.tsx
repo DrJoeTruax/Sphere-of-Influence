@@ -141,6 +141,7 @@ export default function NaderSatellite({ onClick, showLabel = false }: NaderSate
             anchorY="middle"
             outlineWidth={0.01}
             outlineColor="#000000"
+            raycast={() => null}
           >
             PROOF STATION ONE
           </Text>
@@ -150,6 +151,7 @@ export default function NaderSatellite({ onClick, showLabel = false }: NaderSate
             color="#4A90E2"
             anchorX="center"
             anchorY="middle"
+            raycast={() => null}
           >
             The Nader Institute
           </Text>
