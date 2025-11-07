@@ -276,8 +276,8 @@ function HubSatellite({
 
 // Earth with textures component
 function EarthWithTextures({ earthRef, cloudsRef }: {
-  earthRef: React.RefObject<THREE.Mesh>
-  cloudsRef: React.RefObject<THREE.Mesh>
+  earthRef: React.RefObject<THREE.Mesh | null>
+  cloudsRef: React.RefObject<THREE.Mesh | null>
 }) {
   // Load all texture files: planet_color, planet_normal, planet_rough, planet_night, planet_clouds
   const [colorMap, normalMap, roughMap, nightMap, cloudMap] = useTexture([
@@ -317,8 +317,8 @@ function EarthWithTextures({ earthRef, cloudsRef }: {
 
 // Fallback Earth with solid colors
 function EarthFallback({ earthRef, cloudsRef }: {
-  earthRef: React.RefObject<THREE.Mesh>
-  cloudsRef: React.RefObject<THREE.Mesh>
+  earthRef: React.RefObject<THREE.Mesh | null>
+  cloudsRef: React.RefObject<THREE.Mesh | null>
 }) {
   return (
     <>
