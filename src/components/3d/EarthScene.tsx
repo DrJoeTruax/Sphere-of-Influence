@@ -5,9 +5,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
-import EnhancedEarth from './EnhancedEarth'
-import SpaceStation from './SpaceStation'
-import NaderSatellite from './NaderSatellite'
+import OrbitingEarthSystem from './OrbitingEarthSystem'
 import EnhancedStarfield from './EnhancedStarfield'
 import Planet from './Planet'
 import SphereOfInfluenceRing from './SphereOfInfluenceRing'
@@ -210,8 +208,8 @@ export default function EarthScene({
   showEarthDetails = false,
   autoZoom = true
 }: EarthSceneProps) {
-  // Earth is stationary at the center [0,0,0] - this is the focal point
-  const earthCenter = useRef(new THREE.Vector3(0, 0, 0))
+  // Earth's position (will be updated by OrbitingEarthSystem)
+  const earthPos = useRef(new THREE.Vector3(0, 0, 0))
   const sunRef = useRef<THREE.Mesh>(null)
 
   // Rotate sun slowly
@@ -224,25 +222,21 @@ export default function EarthScene({
   return (
     <>
       {/* Lighting */}
-      <pointLight position={[60, 0, 0]} intensity={3} color="#fff5b3" />
-      <directionalLight
-        position={[60, 0, 0]}
-        intensity={Math.PI * 1.5}
-        castShadow
-      />
-      <ambientLight intensity={Math.PI * 0.1} />
+      <ambientLight intensity={0.3} />
+      <pointLight position={[0, 0, 0]} intensity={3} color="#fff5b3" />
+      <directionalLight position={[-10, 5, 5]} intensity={0.5} />
 
       {/* Starfield background */}
       <EnhancedStarfield count={9000} radius={2000} />
 
-      {/* Sun positioned away from Earth */}
-      <mesh ref={sunRef} position={[60, 0, 0]}>
+      {/* Sun at center of solar system */}
+      <mesh ref={sunRef} position={[0, 0, 0]}>
         <sphereGeometry args={[3, 64, 64]} />
         <meshBasicMaterial color="#ffdd55" />
       </mesh>
 
       {/* Sun glow */}
-      <mesh position={[60, 0, 0]}>
+      <mesh position={[0, 0, 0]}>
         <sphereGeometry args={[3.5, 64, 64]} />
         <meshBasicMaterial
           color="#ffdd55"
@@ -270,26 +264,13 @@ export default function EarthScene({
         color="#d4a15f"
       />
 
-      {/* Earth at the center [0, 0, 0] - THE FOCAL POINT */}
-      <group position={[0, 0, 0]}>
-        <EnhancedEarth
-          onHubSelect={onHubSelect}
-          showLabels={showEarthDetails}
-          selectedHubIndex={cycleIndex}
-        />
-
-        {/* Space Station orbiting Earth */}
-        <SpaceStation
-          onClick={() => onHubSelect?.('space-station')}
-          showLabel={showEarthDetails}
-        />
-
-        {/* Nader Satellite orbiting Earth */}
-        <NaderSatellite
-          onClick={() => onHubSelect?.('nader-station')}
-          showLabel={showEarthDetails}
-        />
-      </group>
+      {/* Earth orbiting the Sun (with satellites orbiting Earth) */}
+      <OrbitingEarthSystem
+        onHubSelect={onHubSelect}
+        showLabels={showEarthDetails}
+        selectedHubIndex={cycleIndex}
+        posRef={earthPos}
+      />
 
       {/* Outer Planets */}
       <Planet
@@ -338,7 +319,7 @@ export default function EarthScene({
 
       {/* Camera Controller */}
       <CameraController
-        target={earthCenter}
+        target={earthPos}
         onZoomComplete={() => onCameraAnimationComplete?.()}
         cycleIndex={cycleIndex}
       />
