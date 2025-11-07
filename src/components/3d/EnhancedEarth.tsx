@@ -256,11 +256,13 @@ function EarthWithTextures({ earthRef, cloudsRef }: {
   earthRef: React.RefObject<THREE.Mesh>
   cloudsRef: React.RefObject<THREE.Mesh>
 }) {
-  // Try to load textures - will fallback to solid colors if not found
-  const [colorMap, cloudMap, specularMap] = useTexture([
-    '/textures/8k_earth_daymap.jpg',
-    '/textures/8k_earth_clouds.jpg',
-    '/textures/8k_earth_specular_map.jpg'
+  // Load all texture files: planet_color, planet_normal, planet_rough, planet_night, planet_clouds
+  const [colorMap, normalMap, roughMap, nightMap, cloudMap] = useTexture([
+    '/textures/planet_color.jpg',
+    '/textures/planet_normal.jpg',
+    '/textures/planet_rough.jpg',
+    '/textures/planet_night.jpg',
+    '/textures/planet_clouds.jpg'
   ])
 
   return (
@@ -269,7 +271,11 @@ function EarthWithTextures({ earthRef, cloudsRef }: {
       <Sphere ref={earthRef} args={[EARTH_RADIUS, 128, 128]}>
         <meshStandardMaterial
           map={colorMap}
-          roughnessMap={specularMap}
+          normalMap={normalMap}
+          roughnessMap={roughMap}
+          emissiveMap={nightMap}
+          emissive="#ffffff"
+          emissiveIntensity={0.2}
           metalness={0.1}
         />
       </Sphere>
