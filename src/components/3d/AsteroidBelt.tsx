@@ -12,8 +12,8 @@ export default function AsteroidBelt() {
     const positions = new Float32Array(count * 3)
     const velocities = new Float32Array(count)
 
-    const innerRadius = 110
-    const outerRadius = 130
+    const innerRadius = 160
+    const outerRadius = 190
 
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2

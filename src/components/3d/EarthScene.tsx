@@ -98,18 +98,28 @@ function CameraController({
 
     const hub = regionalHubs[cycleIndex]
 
-    // 1. Calculate the point ON THE GLOBE's surface to look at
+    // 1. Calculate the point ON THE GLOBE's surface to look at (relative to Earth's center)
     const [lx, ly, lz] = latLonToVector3(hub.lat, hub.lon, EARTH_RADIUS)
-    targetLookAt.set(lx, ly, lz)
+    // Add Earth's position to get world coordinates
+    targetLookAt.set(
+      target.current.x + lx,
+      target.current.y + ly,
+      target.current.z + lz
+    )
 
-    // 2. Calculate the CAMERA's position (further out)
+    // 2. Calculate the CAMERA's position (further out, relative to Earth's center)
     const [cx, cy, cz] = latLonToVector3(hub.lat, hub.lon, EARTH_RADIUS + endDist)
-    targetCamPos.set(cx, cy, cz)
+    // Add Earth's position to get world coordinates
+    targetCamPos.set(
+      target.current.x + cx,
+      target.current.y + cy,
+      target.current.z + cz
+    )
 
     // 3. Trigger the flight animation
     setIsFlying(true)
 
-  }, [cycleIndex, isZooming, targetLookAt, targetCamPos])
+  }, [cycleIndex, isZooming, targetLookAt, targetCamPos, target])
 
   // Listen for user interaction to stop auto-rotate
   useEffect(() => {
@@ -255,11 +265,11 @@ export default function EarthScene({
         />
       </mesh>
 
-      {/* Inner Planets - Using more accurate orbital spacing */}
+      {/* Inner Planets - Orbits extended to fill space to ring */}
       <Planet
         name="Mercury"
         size={0.2}
-        semiMajor={20}
+        semiMajor={30}
         eccentricity={0.205}
         orbitPeriod={20}
         color="#b5b5b5"
@@ -267,13 +277,13 @@ export default function EarthScene({
       <Planet
         name="Venus"
         size={0.45}
-        semiMajor={37}
+        semiMajor={55}
         eccentricity={0.007}
         orbitPeriod={50}
         color="#d4a15f"
       />
 
-      {/* Earth orbiting the Sun (with satellites orbiting Earth) */}
+      {/* Earth orbiting the Sun (with satellites orbiting Earth) - 3rd orbit */}
       <OrbitingEarthSystem
         onHubSelect={onHubSelect}
         showLabels={showEarthDetails}
@@ -281,11 +291,11 @@ export default function EarthScene({
         posRef={earthPos}
       />
 
-      {/* Outer Planets - Compressed scale for visibility */}
+      {/* Mars - 4th orbit */}
       <Planet
         name="Mars"
         size={0.35}
-        semiMajor={79}
+        semiMajor={130}
         eccentricity={0.093}
         orbitPeriod={142}
         color="#d15b5b"
@@ -301,7 +311,7 @@ export default function EarthScene({
       <Planet
         name="Jupiter"
         size={8.0}
-        semiMajor={170}
+        semiMajor={280}
         eccentricity={0.049}
         orbitPeriod={890}
         color="#b08968"
@@ -315,7 +325,7 @@ export default function EarthScene({
       <Planet
         name="Saturn"
         size={7.0}
-        semiMajor={260}
+        semiMajor={420}
         eccentricity={0.056}
         orbitPeriod={2200}
         color="#cdb79e"
@@ -331,7 +341,7 @@ export default function EarthScene({
       <Planet
         name="Uranus"
         size={3.5}
-        semiMajor={360}
+        semiMajor={600}
         eccentricity={0.047}
         orbitPeriod={6400}
         color="#7ec8e3"
@@ -344,7 +354,7 @@ export default function EarthScene({
       <Planet
         name="Neptune"
         size={3.5}
-        semiMajor={440}
+        semiMajor={780}
         eccentricity={0.009}
         orbitPeriod={12800}
         color="#4b6cb7"
