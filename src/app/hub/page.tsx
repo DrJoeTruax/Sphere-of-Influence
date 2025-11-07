@@ -46,15 +46,15 @@ export default function HubSelectionPage() {
     }
   }
 
-  // Keyboard navigation
+  // Keyboard navigation (11 hubs now, removed Global Research)
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight') {
         e.preventDefault()
-        setCycleIndex(prev => (prev + 1) % 12)
+        setCycleIndex(prev => (prev + 1) % 11)
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault()
-        setCycleIndex(prev => (prev - 1 + 12) % 12)
+        setCycleIndex(prev => (prev - 1 + 11) % 11)
       }
     }
 

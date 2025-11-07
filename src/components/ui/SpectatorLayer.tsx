@@ -24,7 +24,6 @@ const regionalHubs = [
   { name: 'Southeast Asia', initialViews: 2345678 },
   { name: 'East Asia', initialViews: 3456789 },
   { name: 'Oceania', initialViews: 567890 },
-  { name: 'Global Research', initialViews: 100000 },
 ]
 
 function getViewCount(hubName: string): number {

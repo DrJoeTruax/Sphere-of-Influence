@@ -19,6 +19,7 @@ interface EnhancedEarthProps {
   onHubSelect?: (hubId: string) => void
   hubs?: HubMarker[]
   showLabels?: boolean
+  selectedHubIndex?: number
   radius?: number
 }
 
@@ -136,15 +137,6 @@ const DEFAULT_HUBS: HubMarker[] = [
     color: '#009688',
     bounds: { minLat: -48, maxLat: -10, minLon: 110, maxLon: 180 }
   },
-  {
-    id: 'global-research',
-    name: 'Global Research',
-    position: [-80, 0, 0],
-    activeContributors: 0,
-    languages: ['en'],
-    color: '#FFFFFF',
-    bounds: { minLat: -90, maxLat: -60, minLon: -180, maxLon: 180 }
-  },
 ]
 
 // Region outline component
@@ -176,12 +168,43 @@ function RegionOutline({ bounds, color }: {
           key={i}
           points={segment}
           color={color}
-          lineWidth={2}
+          lineWidth={3}
           transparent
-          opacity={0.6}
+          opacity={0.8}
         />
       ))}
     </group>
+  )
+}
+
+// Static region label component
+function RegionLabel({ hub }: { hub: HubMarker }) {
+  // Calculate center position of the region based on hub's lat/lon
+  const [lat, lon] = hub.position
+  const labelRadius = EARTH_RADIUS + 0.3 // Position label above the region
+  const [x, y, z] = latLonToVector3(lat, lon, labelRadius)
+
+  return (
+    <Html position={[x, y, z]} center distanceFactor={6}>
+      <div
+        style={{
+          color: hub.color,
+          fontSize: '20px',
+          fontWeight: 'bold',
+          textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
+          whiteSpace: 'nowrap',
+          pointerEvents: 'none',
+          userSelect: 'none',
+          textTransform: 'uppercase',
+          letterSpacing: '2px',
+          padding: '4px 8px',
+          background: 'rgba(0,0,0,0.5)',
+          borderRadius: '8px',
+        }}
+      >
+        {hub.name}
+      </div>
+    </Html>
   )
 }
 
@@ -324,7 +347,8 @@ function EarthFallback({ earthRef, cloudsRef }: {
 export default function EnhancedEarth({
   onHubSelect,
   hubs = DEFAULT_HUBS,
-  showLabels = false
+  showLabels = false,
+  selectedHubIndex = 0
 }: EnhancedEarthProps) {
   const earthRef = useRef<THREE.Mesh>(null)
   const cloudsRef = useRef<THREE.Mesh>(null)
@@ -338,6 +362,9 @@ export default function EnhancedEarth({
       cloudsRef.current.rotation.y += delta * 0.06
     }
   })
+
+  // Get the selected hub based on index
+  const selectedHub = hubs[selectedHubIndex]
 
   return (
     <group>
@@ -356,16 +383,18 @@ export default function EnhancedEarth({
         />
       </Sphere>
 
-      {/* Region outlines */}
-      {showLabels && hubs.map((hub) => (
-        hub.bounds && (
-          <RegionOutline
-            key={`outline-${hub.id}`}
-            bounds={hub.bounds}
-            color={hub.color || '#3B82F6'}
-          />
-        )
-      ))}
+      {/* Region outline - ONLY for selected hub */}
+      {showLabels && selectedHub?.bounds && (
+        <RegionOutline
+          bounds={selectedHub.bounds}
+          color={selectedHub.color || '#3B82F6'}
+        />
+      )}
+
+      {/* Static region label - ONLY for selected hub */}
+      {showLabels && selectedHub && (
+        <RegionLabel hub={selectedHub} />
+      )}
 
       {/* Hub satellites */}
       {hubs.map((hub) => (

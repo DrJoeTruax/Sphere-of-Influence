@@ -8,6 +8,8 @@ import EnhancedEarth from './EnhancedEarth'
 import SpaceStation from './SpaceStation'
 import NaderSatellite from './NaderSatellite'
 import EnhancedStarfield from './EnhancedStarfield'
+import Planet from './Planet'
+import SphereOfInfluenceRing from './SphereOfInfluenceRing'
 
 const EARTH_RADIUS = 1.5
 
@@ -53,7 +55,6 @@ const regionalHubs: RegionalHub[] = [
   { id: 'southeast-asia', name: 'Southeast Asia', lat: 10, lon: 120, position: [10, 120, 0], languages: ['en'], color: '#00BCD4' },
   { id: 'east-asia', name: 'East Asia', lat: 35, lon: 135, position: [35, 135, 0], languages: ['ja', 'ko'], color: '#E91E63' },
   { id: 'oceania', name: 'Oceania', lat: -25, lon: 135, position: [-25, 135, 0], languages: ['en'], color: '#009688' },
-  { id: 'global-research', name: 'Global Research', lat: -80, lon: 0, position: [-80, 0, 0], languages: ['en'], color: '#FFFFFF' },
 ]
 
 /**
@@ -211,6 +212,14 @@ export default function EarthScene({
 }: EarthSceneProps) {
   // This ref is the static center [0,0,0] - Earth's position
   const earthCenter = useRef(new THREE.Vector3(0, 0, 0))
+  const sunRef = useRef<THREE.Mesh>(null)
+
+  // Rotate sun slowly
+  useFrame((state, delta) => {
+    if (sunRef.current) {
+      sunRef.current.rotation.y += delta * 0.05
+    }
+  })
 
   return (
     <>
@@ -225,11 +234,47 @@ export default function EarthScene({
       {/* Starfield background */}
       <EnhancedStarfield count={9000} radius={2000} />
 
-      {/* Earth at the center [0, 0, 0] */}
+      {/* Sun at center */}
+      <mesh ref={sunRef} position={[0, 0, 0]}>
+        <sphereGeometry args={[3, 64, 64]} />
+        <meshBasicMaterial color="#ffdd55" />
+      </mesh>
+
+      {/* Sun glow */}
+      <mesh position={[0, 0, 0]}>
+        <sphereGeometry args={[3.5, 64, 64]} />
+        <meshBasicMaterial
+          color="#ffdd55"
+          transparent
+          opacity={0.3}
+          side={THREE.BackSide}
+        />
+      </mesh>
+
+      {/* Inner Planets */}
+      <Planet
+        name="Mercury"
+        size={0.2}
+        semiMajor={10}
+        eccentricity={0.205}
+        orbitPeriod={20}
+        color="#b5b5b5"
+      />
+      <Planet
+        name="Venus"
+        size={0.45}
+        semiMajor={18}
+        eccentricity={0.007}
+        orbitPeriod={50}
+        color="#d4a15f"
+      />
+
+      {/* Earth at the center [0, 0, 0] - NOT ORBITING */}
       <group position={[0, 0, 0]}>
         <EnhancedEarth
           onHubSelect={onHubSelect}
           showLabels={showEarthDetails}
+          selectedHubIndex={cycleIndex}
         />
 
         {/* Space Station orbiting Earth */}
@@ -244,6 +289,51 @@ export default function EarthScene({
           showLabel={showEarthDetails}
         />
       </group>
+
+      {/* Outer Planets */}
+      <Planet
+        name="Mars"
+        size={0.35}
+        semiMajor={38}
+        eccentricity={0.093}
+        orbitPeriod={142}
+        color="#d15b5b"
+      />
+      <Planet
+        name="Jupiter"
+        size={1.1}
+        semiMajor={70}
+        eccentricity={0.049}
+        orbitPeriod={890}
+        color="#b08968"
+      />
+      <Planet
+        name="Saturn"
+        size={1.0}
+        semiMajor={100}
+        eccentricity={0.056}
+        orbitPeriod={2200}
+        color="#cdb79e"
+      />
+      <Planet
+        name="Uranus"
+        size={0.8}
+        semiMajor={140}
+        eccentricity={0.047}
+        orbitPeriod={6400}
+        color="#7ec8e3"
+      />
+      <Planet
+        name="Neptune"
+        size={0.7}
+        semiMajor={180}
+        eccentricity={0.009}
+        orbitPeriod={12800}
+        color="#4b6cb7"
+      />
+
+      {/* Sphere of Influence ring at the outer edge */}
+      <SphereOfInfluenceRing />
 
       {/* Camera Controller */}
       <CameraController
