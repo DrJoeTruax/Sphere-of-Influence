@@ -11,7 +11,7 @@ import { use3DTilt } from '@/hooks/use3DTilt'
 // Dynamic imports for 3D components
 const UniverseBackground = dynamic(() => import('@/components/3d/UniverseBackground'), { ssr: false })
 const HolographicEarth = dynamic(() => import('@/components/3d/HolographicEarth'), { ssr: false })
-const AmbientParticles = dynamic(() => import('@/components/3d/AmbientParticles'), { ssr: false })
+const Text3D = dynamic(() => import('@/components/3d/Text3D'), { ssr: false })
 
 // Law Card Component with 3D tilt
 function LawCard({ law, index }: { law: { name: string; desc: string }; index: number }) {
@@ -110,7 +110,6 @@ export default function Home() {
         <Canvas camera={{ position: [0, 0, 10], fov: 75 }}>
           <Suspense fallback={null}>
             <UniverseBackground count={3000} nebulaEnabled={true} />
-            <AmbientParticles count={150} />
           </Suspense>
         </Canvas>
       </div>
@@ -120,12 +119,39 @@ export default function Home() {
         style={{ y: heroY, opacity: heroOpacity }}
         className="relative flex flex-col items-center justify-center min-h-screen px-4 text-center z-10"
       >
+        {/* 3D Title "Breakthrough" */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1, delay: 0.2 }}
+          className="w-full h-32 md:h-48 mb-4"
+        >
+          <Canvas camera={{ position: [0, 0, 8], fov: 75 }}>
+            <Suspense fallback={null}>
+              <Text3D
+                position={[0, 0, 0]}
+                fontSize={1.2}
+                color="#ffffff"
+                glowColor="#A78BFA"
+                rotation={[-0.3, 0, 0]}
+                animate={true}
+                depth={0.3}
+              >
+                Breakthrough
+              </Text3D>
+              <ambientLight intensity={0.5} />
+              <pointLight position={[10, 10, 10]} intensity={1} />
+              <pointLight position={[-10, -10, -10]} intensity={0.5} color="#3B82F6" />
+            </Suspense>
+          </Canvas>
+        </motion.div>
+
         {/* 3D Holographic Earth */}
         <motion.div
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 1, delay: 0.5 }}
-          className="w-64 h-64 md:w-96 md:h-96 mb-8"
+          className="w-48 h-48 md:w-64 md:h-64 mb-8"
         >
           <Canvas camera={{ position: [0, 0, 3], fov: 50 }}>
             <Suspense fallback={null}>
@@ -134,17 +160,6 @@ export default function Home() {
             </Suspense>
           </Canvas>
         </motion.div>
-
-        <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.8 }}
-          className="text-6xl md:text-8xl font-bold mb-6"
-        >
-          <span className="bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
-            Breakthrough
-          </span>
-        </motion.h1>
 
         <motion.p
           initial={{ opacity: 0, y: 20 }}
