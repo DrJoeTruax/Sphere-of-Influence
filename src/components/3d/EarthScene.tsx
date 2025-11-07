@@ -9,6 +9,7 @@ import OrbitingEarthSystem from './OrbitingEarthSystem'
 import EnhancedStarfield from './EnhancedStarfield'
 import Planet from './Planet'
 import SphereOfInfluenceRing from './SphereOfInfluenceRing'
+import AsteroidBelt from './AsteroidBelt'
 
 const EARTH_RADIUS = 1.5
 
@@ -144,6 +145,7 @@ function CameraController({
       )
 
       camera.position.lerpVectors(startPos, endPos, easedT)
+      c.target.copy(target.current)
       camera.lookAt(target.current)
 
     } else if (isZooming && elapsed >= duration) {
@@ -151,7 +153,11 @@ function CameraController({
       setIsZooming(false)
       onZoomComplete()
 
-      camera.position.set(0, 0, endDist)
+      camera.position.set(
+        target.current.x,
+        target.current.y + endYPos,
+        target.current.z + endDist
+      )
       if (c) {
         c.target.copy(target.current)
         c.update()
@@ -178,6 +184,8 @@ function CameraController({
     // --- 3. AUTO-ROTATE & USER CONTROL ---
     } else if (!isZooming && !isFlying) {
       c.enabled = true
+      // Always track Earth's position
+      c.target.copy(target.current)
       // Enable auto-rotate ONLY if user is not interacting
       c.autoRotate = !isUserInteracting
       c.autoRotateSpeed = 0.3 // Set rotation speed
@@ -190,6 +198,7 @@ function CameraController({
   return (
     <OrbitControls
       ref={controlsRef}
+      target={target.current}
       enableDamping
       dampingFactor={0.05}
       rotateSpeed={0.4}
@@ -246,11 +255,11 @@ export default function EarthScene({
         />
       </mesh>
 
-      {/* Inner Planets */}
+      {/* Inner Planets - Using more accurate orbital spacing */}
       <Planet
         name="Mercury"
         size={0.2}
-        semiMajor={10}
+        semiMajor={20}
         eccentricity={0.205}
         orbitPeriod={20}
         color="#b5b5b5"
@@ -258,7 +267,7 @@ export default function EarthScene({
       <Planet
         name="Venus"
         size={0.45}
-        semiMajor={18}
+        semiMajor={37}
         eccentricity={0.007}
         orbitPeriod={50}
         color="#d4a15f"
@@ -272,43 +281,70 @@ export default function EarthScene({
         posRef={earthPos}
       />
 
-      {/* Outer Planets */}
+      {/* Outer Planets - Compressed scale for visibility */}
       <Planet
         name="Mars"
         size={0.35}
-        semiMajor={38}
+        semiMajor={79}
         eccentricity={0.093}
         orbitPeriod={142}
         color="#d15b5b"
+        moons={[
+          { size: 0.05, distance: 0.7, color: "#6b5d54", orbitSpeed: 0.3 }, // Phobos
+          { size: 0.04, distance: 1.0, color: "#7a6d64", orbitSpeed: 0.15 }  // Deimos
+        ]}
       />
+
+      {/* Asteroid Belt between Mars and Jupiter */}
+      <AsteroidBelt />
+
       <Planet
         name="Jupiter"
         size={1.1}
-        semiMajor={70}
+        semiMajor={170}
         eccentricity={0.049}
         orbitPeriod={890}
         color="#b08968"
+        moons={[
+          { size: 0.11, distance: 1.8, color: "#c4a55a", orbitSpeed: 0.5 },  // Io
+          { size: 0.09, distance: 2.3, color: "#c9b895", orbitSpeed: 0.35 }, // Europa
+          { size: 0.15, distance: 3.0, color: "#8b7d6b", orbitSpeed: 0.2 },  // Ganymede
+          { size: 0.14, distance: 3.8, color: "#6d6354", orbitSpeed: 0.12 }  // Callisto
+        ]}
       />
       <Planet
         name="Saturn"
         size={1.0}
-        semiMajor={100}
+        semiMajor={260}
         eccentricity={0.056}
         orbitPeriod={2200}
         color="#cdb79e"
+        rings={{
+          innerRadius: 1.3,
+          outerRadius: 2.3,
+          color: "#d4c5a0"
+        }}
+        moons={[
+          { size: 0.15, distance: 3.2, color: "#daa855", orbitSpeed: 0.1 } // Titan
+        ]}
       />
       <Planet
         name="Uranus"
         size={0.8}
-        semiMajor={140}
+        semiMajor={360}
         eccentricity={0.047}
         orbitPeriod={6400}
         color="#7ec8e3"
+        rings={{
+          innerRadius: 1.1,
+          outerRadius: 1.6,
+          color: "#95b3c9"
+        }}
       />
       <Planet
         name="Neptune"
         size={0.7}
-        semiMajor={180}
+        semiMajor={440}
         eccentricity={0.009}
         orbitPeriod={12800}
         color="#4b6cb7"
