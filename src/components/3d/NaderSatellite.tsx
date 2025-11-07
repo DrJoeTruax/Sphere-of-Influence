@@ -43,7 +43,7 @@ export default function NaderSatellite({ onClick, showLabel = false }: NaderSate
   return (
     <group ref={satelliteRef}>
       {/* Main cylindrical body */}
-      <mesh rotation={[0, 0, Math.PI / 2]}>
+      <mesh rotation={[0, 0, Math.PI / 2]} raycast={() => null}>
         <cylinderGeometry args={[0.2, 0.2, 0.8, 16]} />
         <meshStandardMaterial
           color="#C0C0C0"
@@ -53,7 +53,7 @@ export default function NaderSatellite({ onClick, showLabel = false }: NaderSate
       </mesh>
 
       {/* Lattice shell (wireframe) */}
-      <mesh ref={shellRef} rotation={[0, 0, Math.PI / 2]}>
+      <mesh ref={shellRef} rotation={[0, 0, Math.PI / 2]} raycast={() => null}>
         <cylinderGeometry args={[0.25, 0.25, 0.9, 12]} />
         <meshBasicMaterial
           color="#00CED1"
@@ -66,7 +66,7 @@ export default function NaderSatellite({ onClick, showLabel = false }: NaderSate
       {/* Glowing rings with text */}
       <group ref={ringRef}>
         {/* Ring 1 - THE NADER INSTITUTE */}
-        <mesh rotation={[0, 0, Math.PI / 2]} position={[0.3, 0, 0]}>
+        <mesh rotation={[0, 0, Math.PI / 2]} position={[0.3, 0, 0]} raycast={() => null}>
           <torusGeometry args={[0.3, 0.02, 8, 24]} />
           <meshStandardMaterial
             color="#00CED1"
@@ -76,7 +76,7 @@ export default function NaderSatellite({ onClick, showLabel = false }: NaderSate
         </mesh>
 
         {/* Ring 2 - HOUSE OF PROOF */}
-        <mesh rotation={[0, 0, Math.PI / 2]} position={[-0.3, 0, 0]}>
+        <mesh rotation={[0, 0, Math.PI / 2]} position={[-0.3, 0, 0]} raycast={() => null}>
           <torusGeometry args={[0.3, 0.02, 8, 24]} />
           <meshStandardMaterial
             color="#4A90E2"
@@ -87,7 +87,7 @@ export default function NaderSatellite({ onClick, showLabel = false }: NaderSate
       </group>
 
       {/* Solar panels */}
-      <mesh position={[0, 0, 0.5]}>
+      <mesh position={[0, 0, 0.5]} raycast={() => null}>
         <boxGeometry args={[0.8, 0.02, 0.4]} />
         <meshStandardMaterial
           color="#1E3A8A"
@@ -96,7 +96,7 @@ export default function NaderSatellite({ onClick, showLabel = false }: NaderSate
           emissiveIntensity={0.2}
         />
       </mesh>
-      <mesh position={[0, 0, -0.5]}>
+      <mesh position={[0, 0, -0.5]} raycast={() => null}>
         <boxGeometry args={[0.8, 0.02, 0.4]} />
         <meshStandardMaterial
           color="#1E3A8A"
@@ -107,13 +107,13 @@ export default function NaderSatellite({ onClick, showLabel = false }: NaderSate
       </mesh>
 
       {/* Antenna */}
-      <mesh position={[0.5, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+      <mesh position={[0.5, 0, 0]} rotation={[0, 0, Math.PI / 2]} raycast={() => null}>
         <cylinderGeometry args={[0.01, 0.01, 0.3, 8]} />
         <meshStandardMaterial color="#00CED1" emissive="#00CED1" emissiveIntensity={0.5} />
       </mesh>
 
       {/* Glow aura */}
-      <mesh>
+      <mesh raycast={() => null}>
         <sphereGeometry args={[0.6, 16, 16]} />
         <meshBasicMaterial
           color="#00CED1"
