@@ -10,12 +10,14 @@ import NaderSatellite from './NaderSatellite'
 interface OrbitingEarthSystemProps {
   onHubSelect?: (hubId: string) => void
   showLabels?: boolean
+  selectedHubIndex?: number
   posRef?: React.MutableRefObject<THREE.Vector3>
 }
 
 export default function OrbitingEarthSystem({
   onHubSelect,
   showLabels,
+  selectedHubIndex = 0,
   posRef
 }: OrbitingEarthSystemProps) {
   const groupRef = useRef<THREE.Group>(null)
@@ -52,6 +54,7 @@ export default function OrbitingEarthSystem({
         <EnhancedEarth
           onHubSelect={onHubSelect}
           showLabels={showLabels}
+          selectedHubIndex={selectedHubIndex}
         />
 
         {/* Space Station orbiting Earth */}
