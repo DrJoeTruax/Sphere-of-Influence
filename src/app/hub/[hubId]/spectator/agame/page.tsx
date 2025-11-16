@@ -44,17 +44,29 @@ export default function ProjectAgame({ params }: { params: Promise<{ hubId: stri
   }, [])
 
   const loadUserStats = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        console.warn('User not authenticated for stats')
+        return
+      }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('agame_score')
-      .eq('id', user.id)
-      .single()
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('agame_score')
+        .eq('id', user.id)
+        .single()
 
-    if (profile) {
-      setTotalAnswered(profile.agame_score || 0)
+      if (error) {
+        console.warn('Error loading user stats:', error)
+        return
+      }
+
+      if (profile) {
+        setTotalAnswered(profile.agame_score || 0)
+      }
+    } catch (err) {
+      console.error('Exception loading user stats:', err)
     }
   }
 
@@ -62,21 +74,31 @@ export default function ProjectAgame({ params }: { params: Promise<{ hubId: stri
     setLoading(true)
     setStartTime(Date.now())
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        console.warn('User not authenticated')
+        setLoading(false)
+        return
+      }
 
-    const difficultyLevel = Math.min(Math.floor(totalAnswered / 5) + 1, 10)
+      const difficultyLevel = Math.min(Math.floor(totalAnswered / 5) + 1, 10)
 
-    const { data, error } = await supabase.rpc('get_next_agame_question', {
-      p_user_id: user.id,
-      difficulty_level: difficultyLevel
-    })
+      const { data, error } = await supabase.rpc('get_next_agame_question', {
+        p_user_id: user.id,
+        difficulty_level: difficultyLevel
+      })
 
-    if (data && data.length > 0) {
-      setCurrentQuestion(data[0])
+      if (error) {
+        console.error('Error loading question:', error)
+      }
+
+      if (data && data.length > 0) {
+        setCurrentQuestion(data[0])
+      }
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   const submitChoice = async (choice: 'A' | 'B') => {
