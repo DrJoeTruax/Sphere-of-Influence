@@ -6,6 +6,7 @@ interface SpectatorLayerProps {
   selectedHub: string | null
   onClearHub: () => void
   onSelectHub: (hubName: string) => void
+  onConfirmSelection: () => void
   showUI: boolean
   cycleIndex: number
   setCycleIndex: React.Dispatch<React.SetStateAction<number>>
@@ -25,6 +26,11 @@ const regionalHubs = [
   { name: 'East Asia', initialViews: 3456789, color: '#E91E63' },
   { name: 'Oceania', initialViews: 567890, color: '#009688' },
 ]
+
+// Convert hub display name to URL slug
+function hubNameToSlug(name: string): string {
+  return name.toLowerCase().replace(/\s+/g, '-')
+}
 
 function getViewCount(hubName: string): number {
   if (typeof window === 'undefined') return 0
@@ -55,6 +61,7 @@ export default function SpectatorLayer({
   selectedHub,
   onClearHub,
   onSelectHub,
+  onConfirmSelection,
   showUI,
   cycleIndex,
   setCycleIndex
@@ -252,7 +259,13 @@ export default function SpectatorLayer({
               <button
                 onClick={() => {
                   incrementViewCount(selectedHub)
-                  // Navigate to hub in the future
+                  // Convert display name to slug and navigate
+                  const hubSlug = hubNameToSlug(selectedHub)
+                  // Store the selected hub before confirming
+                  if (typeof window !== 'undefined') {
+                    localStorage.setItem('breakthrough_selected_hub', hubSlug)
+                  }
+                  onConfirmSelection()
                 }}
                 className="w-full mt-6 px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-white font-bold uppercase tracking-wider transition-colors"
               >
@@ -296,9 +309,9 @@ export default function SpectatorLayer({
                   onSelectHub(currentCycledHub.name)
                   incrementViewCount(currentCycledHub.name)
                 }}
-                className="w-full mt-6 px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-white font-bold uppercase tracking-wider transition-colors"
+                className="w-full mt-4 px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded text-white font-bold uppercase tracking-wider transition-colors"
               >
-                ENTER HUB
+                SELECT HUB
               </button>
             </div>
           )}
