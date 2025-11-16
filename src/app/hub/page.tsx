@@ -20,13 +20,16 @@ export default function HubSelectionPage() {
     setTimeout(() => setShowUI(true), 500)
   }
 
-  const handleHubSelect = (hubId: string) => {
+  const handleHubSelect = (hubName: string) => {
+    // Convert display name to URL slug
+    const hubSlug = hubName.toLowerCase().replace(/\s+/g, '-')
+
     // Special case: Nader Station navigates directly to proof station
-    if (hubId === 'nader-station') {
+    if (hubSlug === 'nader-station') {
       router.push('/planets/nader')
       return
     }
-    setSelectedHub(hubId)
+    setSelectedHub(hubSlug)
   }
 
   const handleClearHub = () => {
@@ -35,10 +38,6 @@ export default function HubSelectionPage() {
 
   const handleConfirmSelection = () => {
     if (selectedHub) {
-      // Save hub selection
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('breakthrough_selected_hub', selectedHub)
-      }
       // Navigate to role selection
       setTimeout(() => {
         router.push(`/hub/${selectedHub}/role`)
@@ -80,6 +79,7 @@ export default function HubSelectionPage() {
         selectedHub={selectedHub}
         onClearHub={handleClearHub}
         onSelectHub={handleHubSelect}
+        onConfirmSelection={handleConfirmSelection}
         showUI={showUI}
         cycleIndex={cycleIndex}
         setCycleIndex={setCycleIndex}
