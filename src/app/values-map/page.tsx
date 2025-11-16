@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Text, Line } from '@react-three/drei'
 import * as THREE from 'three'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { supabase } from '@/lib/supabase'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 
@@ -22,7 +22,6 @@ export default function ValuesMapPage() {
   const [selectedDimension, setSelectedDimension] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'3d' | '2d'>('3d')
   const [loading, setLoading] = useState(true)
-  const supabase = createClientComponentClient()
 
   useEffect(() => {
     loadValuesDimensions()
