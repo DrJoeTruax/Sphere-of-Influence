@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import Link from 'link'
+import { supabase } from '@/lib/supabase'
+import Link from 'next/link'
 
 interface Question {
   id: string
@@ -26,7 +26,6 @@ interface QuestionStats {
 }
 
 export default function ProjectAgame({ params }: { params: { hubId: string } }) {
-  const supabase = createClientComponentClient()
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null)
   const [questionNumber, setQuestionNumber] = useState(1)
   const [streak, setStreak] = useState(0)
@@ -326,7 +325,6 @@ function ResultsScreen({ question, userChoice, globalStats }: {
 
 function GlobalImpactWidget({ totalAnswered, hubId }: { totalAnswered: number; hubId: string }) {
   const [globalTotal, setGlobalTotal] = useState(0)
-  const supabase = createClientComponentClient()
 
   useEffect(() => {
     loadGlobalStats()

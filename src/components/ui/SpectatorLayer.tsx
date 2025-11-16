@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
+import Link from 'next/link'
 
 interface SpectatorLayerProps {
   selectedHub: string | null
@@ -71,6 +72,8 @@ export default function SpectatorLayer({
   const [witnesses, setWitnesses] = useState<string[]>([])
   const [hopeLevel, setHopeLevel] = useState(3)
   const [hubViews, setHubViews] = useState<Record<string, number>>({})
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   // Initialize stats on client only
   useEffect(() => {
@@ -83,6 +86,13 @@ export default function SpectatorLayer({
       views[hub.name] = getViewCount(hub.name)
     })
     setHubViews(views)
+
+    // Check initial fullscreen state
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement)
+    }
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
   }, [])
 
   useEffect(() => {
@@ -130,6 +140,20 @@ export default function SpectatorLayer({
     setCycleIndex(prev => (prev - 1 + regionalHubs.length) % regionalHubs.length)
   }
 
+  const handleFullscreenToggle = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        if (containerRef.current) {
+          await containerRef.current.requestFullscreen()
+        }
+      } else {
+        await document.exitFullscreen()
+      }
+    } catch (err) {
+      console.error('Error toggling fullscreen:', err)
+    }
+  }
+
   // Ensure cycleIndex is within bounds
   const safeIndex = Math.min(cycleIndex, regionalHubs.length - 1)
   const currentCycledHub = regionalHubs[safeIndex]
@@ -137,7 +161,40 @@ export default function SpectatorLayer({
   const formatNumber = (num: number) => num.toLocaleString('en-US')
 
   return (
-    <>
+    <div ref={containerRef} className="w-full h-full">
+      {/* --- Top Right Navigation Menu --- */}
+      <div className="fixed top-4 right-4 flex gap-2 z-40">
+        {/* Human Values Map Button */}
+        <Link
+          href="/values-map"
+          className="px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-lg text-white text-sm font-semibold transition-all duration-200 transform hover:scale-105 flex items-center gap-2 shadow-lg"
+          title="View Human Values Map"
+        >
+          <span>🗺️</span>
+          <span className="hidden sm:inline">Values Map</span>
+        </Link>
+
+        {/* Project Agame Button */}
+        <Link
+          href="/hub/north-america/spectator/agame"
+          className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-lg text-white text-sm font-semibold transition-all duration-200 transform hover:scale-105 flex items-center gap-2 shadow-lg"
+          title="Play Project Agame"
+        >
+          <span>🎮</span>
+          <span className="hidden sm:inline">Project Agame</span>
+        </Link>
+
+        {/* Fullscreen Button */}
+        <button
+          onClick={handleFullscreenToggle}
+          className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 rounded-lg text-white text-sm font-semibold transition-all duration-200 transform hover:scale-105 flex items-center gap-2 shadow-lg"
+          title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+        >
+          <span>{isFullscreen ? '⊘' : '⛶'}</span>
+          <span className="hidden sm:inline">{isFullscreen ? 'Exit Full' : 'Full Screen'}</span>
+        </button>
+      </div>
+
       {/* --- Global Stats Bar (Top) --- */}
       <div className="fixed top-0 left-0 right-0 bg-black/50 backdrop-blur-sm border-b border-gray-800 z-40 px-4 py-2" role="banner">
         <div className="max-w-7xl mx-auto flex flex-wrap justify-around items-center gap-x-4 gap-y-1 text-xs md:text-sm">
@@ -333,6 +390,6 @@ export default function SpectatorLayer({
           animation: fadeIn 1s ease-out forwards;
         }
       `}</style>
-    </>
+    </div>
   )
 }
