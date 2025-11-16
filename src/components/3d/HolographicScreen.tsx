@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef } from 'react'
+import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 
@@ -20,12 +21,21 @@ export default function HolographicScreen({
   position
 }: HolographicScreenProps) {
   const screenRef = useRef<THREE.Mesh>(null)
+  const groupRef = useRef<THREE.Group>(null)
+
+  // Make the billboard face the camera
+  useFrame(({ camera }) => {
+    if (groupRef.current) {
+      // Rotate the group to look at the camera
+      groupRef.current.lookAt(camera.position)
+    }
+  })
 
   // Format languages for display
   const langDisplay = languages.map(lang => lang.toUpperCase()).join('/')
 
   return (
-    <group position={position}>
+    <group ref={groupRef} position={position}>
       {/* Holographic screen frame */}
       <mesh ref={screenRef}>
         <planeGeometry args={[1.5, 1.0]} />
