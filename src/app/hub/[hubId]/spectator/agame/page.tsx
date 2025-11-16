@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
+import { use } from 'react'
 
 interface Question {
   id: string
@@ -25,7 +26,8 @@ interface QuestionStats {
   }>
 }
 
-export default function ProjectAgame({ params }: { params: { hubId: string } }) {
+export default function ProjectAgame({ params }: { params: Promise<{ hubId: string }> }) {
+  const { hubId } = use(params)
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null)
   const [questionNumber, setQuestionNumber] = useState(1)
   const [streak, setStreak] = useState(0)
@@ -95,7 +97,7 @@ export default function ProjectAgame({ params }: { params: { hubId: string } }) 
         question_id: currentQuestion.id,
         choice,
         response_time_ms: responseTime,
-        user_region: params.hubId,
+        user_region: hubId,
         certainty: 3
       })
 
@@ -251,7 +253,7 @@ export default function ProjectAgame({ params }: { params: { hubId: string } }) 
 
       {/* Global Impact Stats */}
       <div className="max-w-4xl mx-auto mt-8">
-        <GlobalImpactWidget totalAnswered={totalAnswered} hubId={params.hubId} />
+        <GlobalImpactWidget totalAnswered={totalAnswered} hubId={hubId} />
       </div>
     </div>
   )
