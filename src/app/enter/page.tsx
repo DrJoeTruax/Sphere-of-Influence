@@ -43,7 +43,7 @@ export default function EnterPage() {
   const handleEnter = () => {
     setState('entering')
     setTimeout(() => {
-      window.location.href = '/hub'
+      window.location.href = '/wormhole'
     }, 1500)
   }
 
@@ -252,10 +252,10 @@ export default function EnterPage() {
               animate={{ opacity: 1, y: 0 }}
               className="text-center"
             >
-              <div className="text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-                Entering Breakthrough
+              <div className="text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-cyan-400 via-purple-500 to-blue-500 bg-clip-text text-transparent">
+                Initiating Wormhole Transit
               </div>
-              <div className="text-gray-400">Preparing your experience...</div>
+              <div className="text-gray-400">Destination: Earth...</div>
             </motion.div>
           </motion.div>
         )}
