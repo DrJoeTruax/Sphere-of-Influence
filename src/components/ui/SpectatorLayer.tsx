@@ -163,7 +163,7 @@ export default function SpectatorLayer({
   return (
     <div ref={containerRef} className="w-full h-full">
       {/* --- Top Right Navigation Menu --- */}
-      <div className="fixed top-4 right-4 flex gap-2 z-40">
+      <div className="fixed top-20 right-4 flex gap-2 z-40">
         {/* Human Values Map Button */}
         <Link
           href="/values-map"
