@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef } from 'react'
+import { useRef, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useRouter } from 'next/navigation'
 import * as THREE from 'three'
@@ -105,12 +105,43 @@ const WormholeMaterial = shaderMaterial(
   `
 )
 
-export default function WormholePortal() {
+interface WormholePortalProps {
+  earthPosition: React.MutableRefObject<THREE.Vector3>
+}
+
+export default function WormholePortal({ earthPosition }: WormholePortalProps) {
   const router = useRouter()
   const { raycaster, camera, gl } = useThree()
   const portalRef = useRef<THREE.Mesh>(null)
+  const tubeRef = useRef<THREE.Mesh>(null)
+  const groupRef = useRef<THREE.Group>(null)
   const materialRef = useRef<THREE.ShaderMaterial & { uniforms: { time: { value: number }; intensity: { value: number } } } | null>(null)
+  const tubeMaterialRef = useRef<THREE.ShaderMaterial & { uniforms: { time: { value: number }; intensity: { value: number } } } | null>(null)
   const glowRef = useRef<THREE.Mesh>(null)
+
+  // Create a long tube path extending into space
+  const tubePath = useMemo(() => {
+    const points: THREE.Vector3[] = []
+    const tubeLength = 200 // Long tube extending into space
+    const segments = 100
+
+    for (let i = 0; i <= segments; i++) {
+      const t = i / segments
+      const z = t * tubeLength
+      // Slight spiral to make it more dynamic
+      const spiralRadius = 0.5 + t * 2
+      const spiralAngle = t * Math.PI * 4
+      const x = Math.cos(spiralAngle) * spiralRadius
+      const y = Math.sin(spiralAngle) * spiralRadius
+      points.push(new THREE.Vector3(x, y, z))
+    }
+
+    return new THREE.CatmullRomCurve3(points)
+  }, [])
+
+  const tubeGeometry = useMemo(() => {
+    return new THREE.TubeGeometry(tubePath, 100, 2, 16, false)
+  }, [tubePath])
 
   useFrame((state) => {
     if (materialRef.current) {
@@ -118,22 +149,47 @@ export default function WormholePortal() {
       materialRef.current.uniforms.intensity.value = 1.5 + Math.sin(state.clock.elapsedTime * 2) * 0.3
     }
 
+    if (tubeMaterialRef.current) {
+      tubeMaterialRef.current.uniforms.time.value = state.clock.elapsedTime
+      tubeMaterialRef.current.uniforms.intensity.value = 0.8 + Math.sin(state.clock.elapsedTime * 1.5) * 0.2
+    }
+
     // Pulsing glow effect
     if (glowRef.current) {
       const scale = 1 + Math.sin(state.clock.elapsedTime * 1.5) * 0.1
       glowRef.current.scale.set(scale, scale, 1)
     }
+
+    // Position the wormhole portal to keep pace with Earth on one side
+    // Place it to the right of Earth (positive X in Earth's local space)
+    if (groupRef.current && earthPosition.current) {
+      const offset = 15 // Distance from Earth's center
+      groupRef.current.position.set(
+        earthPosition.current.x + offset,
+        earthPosition.current.y,
+        earthPosition.current.z
+      )
+
+      // Orient the tube to point away from Earth
+      const direction = new THREE.Vector3(offset, 0, 0).normalize()
+      const up = new THREE.Vector3(0, 1, 0)
+      const quaternion = new THREE.Quaternion()
+      const targetMatrix = new THREE.Matrix4()
+      targetMatrix.lookAt(new THREE.Vector3(0, 0, 0), direction, up)
+      quaternion.setFromRotationMatrix(targetMatrix)
+      groupRef.current.quaternion.copy(quaternion)
+    }
   })
 
   const handleClick = (event: THREE.Event) => {
     event.stopPropagation()
-    // Navigate to enter page through wormhole
-    router.push('/enter')
+    // Navigate to wormhole page in reverse mode
+    router.push('/wormhole?reverse=true')
   }
 
   return (
-    <group position={[0, 10, -20]}>
-      {/* Wormhole portal mesh */}
+    <group ref={groupRef}>
+      {/* Wormhole portal entrance */}
       <mesh
         ref={portalRef}
         onClick={handleClick}
@@ -160,7 +216,7 @@ export default function WormholePortal() {
         />
       </mesh>
 
-      {/* Glowing ring around portal */}
+      {/* Glowing ring around portal entrance */}
       <mesh ref={glowRef}>
         <ringGeometry args={[4.8, 5.2, 64]} />
         <meshBasicMaterial
@@ -169,6 +225,19 @@ export default function WormholePortal() {
           opacity={0.6}
           side={THREE.DoubleSide}
           blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+
+      {/* Long wormhole tube extending into space */}
+      <mesh ref={tubeRef} geometry={tubeGeometry}>
+        <primitive
+          ref={tubeMaterialRef}
+          object={new WormholeMaterial()}
+          attach="material"
+          transparent
+          side={THREE.DoubleSide}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
         />
       </mesh>
 
