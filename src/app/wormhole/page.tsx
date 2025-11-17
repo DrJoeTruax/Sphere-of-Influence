@@ -397,18 +397,37 @@ function NebulaCloud({ position, scale, colors }: {
   );
 }
 
-// Simple wormhole tunnel for the transition to Earth
-function SimpleWormholeTunnel() {
+// EPIC wormhole tunnel with twists, turns, and immersive interior view
+function EpicWormholeTunnel() {
   const tunnelRef = useRef<THREE.Mesh>(null);
   const materialRef = useRef<THREE.ShaderMaterial & { uniforms: { time: { value: number }; intensity: { value: number } } } | null>(null);
 
   const tubeGeometry = useMemo(() => {
-    // Create straight path towards Earth
-    const startPos = new THREE.Vector3(0, 0, 0);
-    const endPos = new THREE.Vector3(0, 0, -500);
+    // Create an EPIC twisting, turning path through space!
+    const points: THREE.Vector3[] = [];
+    const segments = 50;
 
-    const path = new THREE.CatmullRomCurve3([startPos, endPos]);
-    return new THREE.TubeGeometry(path, 128, 8.0, 32, false);
+    for (let i = 0; i <= segments; i++) {
+      const t = i / segments;
+      const z = -t * 600; // Total distance
+
+      // Spiral with varying radius and multiple frequencies
+      const spiralRadius = 30 + Math.sin(t * Math.PI * 4) * 20;
+      const spiralAngle = t * Math.PI * 8; // Multiple rotations
+
+      // Add some serpentine motion
+      const serpentine = Math.sin(t * Math.PI * 6) * 15;
+
+      // Combine movements for complex path
+      const x = Math.cos(spiralAngle) * spiralRadius + serpentine;
+      const y = Math.sin(spiralAngle) * spiralRadius + Math.cos(t * Math.PI * 5) * 10;
+
+      points.push(new THREE.Vector3(x, y, z));
+    }
+
+    const path = new THREE.CatmullRomCurve3(points, false, 'catmullrom', 0.5);
+    // Larger radius (12) so it's comfortable to travel through from inside
+    return new THREE.TubeGeometry(path, 200, 12.0, 32, false);
   }, []);
 
   useFrame((state) => {
@@ -434,48 +453,241 @@ function SimpleWormholeTunnel() {
   );
 }
 
-// Camera controller for wormhole traversal
+// Energy rings that mark progress through the wormhole
+function EnergyRings() {
+  const ringsRef = useRef<THREE.Group>(null);
+
+  const rings = useMemo(() => {
+    const ringPositions: THREE.Vector3[] = [];
+    const segments = 50;
+
+    for (let i = 0; i <= segments; i++) {
+      const t = i / segments;
+      const z = -t * 600;
+
+      const spiralRadius = 30 + Math.sin(t * Math.PI * 4) * 20;
+      const spiralAngle = t * Math.PI * 8;
+      const serpentine = Math.sin(t * Math.PI * 6) * 15;
+
+      const x = Math.cos(spiralAngle) * spiralRadius + serpentine;
+      const y = Math.sin(spiralAngle) * spiralRadius + Math.cos(t * Math.PI * 5) * 10;
+
+      // Place rings every 5 segments
+      if (i % 5 === 0) {
+        ringPositions.push(new THREE.Vector3(x, y, z));
+      }
+    }
+
+    return ringPositions;
+  }, []);
+
+  useFrame((state) => {
+    if (ringsRef.current) {
+      ringsRef.current.children.forEach((ring, i) => {
+        const scale = 1 + Math.sin(state.clock.elapsedTime * 3 + i) * 0.2;
+        ring.scale.setScalar(scale);
+      });
+    }
+  });
+
+  return (
+    <group ref={ringsRef}>
+      {rings.map((pos, i) => (
+        <mesh key={i} position={pos}>
+          <torusGeometry args={[13, 0.5, 16, 32]} />
+          <meshBasicMaterial
+            color={i % 2 === 0 ? "#00ffff" : "#ff00ff"}
+            transparent
+            opacity={0.6}
+            blending={THREE.AdditiveBlending}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// Speed lines/particles rushing past the camera
+function SpeedLines() {
+  const particlesRef = useRef<THREE.Points>(null);
+
+  const particles = useMemo(() => {
+    const count = 500;
+    const positions = new Float32Array(count * 3);
+    const velocities = new Float32Array(count);
+
+    for (let i = 0; i < count; i++) {
+      const i3 = i * 3;
+      // Distribute around the tunnel
+      const angle = Math.random() * Math.PI * 2;
+      const radius = 5 + Math.random() * 8;
+
+      positions[i3] = Math.cos(angle) * radius;
+      positions[i3 + 1] = Math.sin(angle) * radius;
+      positions[i3 + 2] = -Math.random() * 600; // Distributed along path
+
+      velocities[i] = 2 + Math.random() * 3;
+    }
+
+    return { positions, velocities };
+  }, []);
+
+  useFrame(() => {
+    if (particlesRef.current) {
+      const positions = particlesRef.current.geometry.attributes.position.array as Float32Array;
+
+      for (let i = 0; i < positions.length / 3; i++) {
+        const i3 = i * 3;
+
+        // Move particles backward (camera moves forward, so relative motion)
+        positions[i3 + 2] += particles.velocities[i];
+
+        // Reset particles that go behind camera
+        if (positions[i3 + 2] > 50) {
+          positions[i3 + 2] = -600;
+
+          const angle = Math.random() * Math.PI * 2;
+          const radius = 5 + Math.random() * 8;
+          positions[i3] = Math.cos(angle) * radius;
+          positions[i3 + 1] = Math.sin(angle) * radius;
+        }
+      }
+
+      particlesRef.current.geometry.attributes.position.needsUpdate = true;
+    }
+  });
+
+  return (
+    <points ref={particlesRef}>
+      <bufferGeometry>
+        <bufferAttribute
+          attach="attributes-position"
+          count={particles.positions.length / 3}
+          array={particles.positions}
+          itemSize={3}
+        />
+      </bufferGeometry>
+      <pointsMaterial
+        size={0.3}
+        color="#ffffff"
+        transparent
+        opacity={0.8}
+        blending={THREE.AdditiveBlending}
+        sizeAttenuation
+      />
+    </points>
+  );
+}
+
+// EPIC Camera controller that flies THROUGH the wormhole
 function WormholeTraversalCamera({ onComplete }: { onComplete: () => void }) {
   const { camera } = useThree();
   const { setTraversalProgress } = useContext(ViewModeContext);
-  const startTimeRef = useRef<number>(0);
   const hasStarted = useRef(false);
+  const pathRef = useRef<THREE.CatmullRomCurve3 | null>(null);
+  const rollOffsetRef = useRef(0);
+
+  // Create the same path that the tunnel uses
+  useEffect(() => {
+    if (!pathRef.current) {
+      const points: THREE.Vector3[] = [];
+      const segments = 50;
+
+      for (let i = 0; i <= segments; i++) {
+        const t = i / segments;
+        const z = -t * 600;
+
+        const spiralRadius = 30 + Math.sin(t * Math.PI * 4) * 20;
+        const spiralAngle = t * Math.PI * 8;
+        const serpentine = Math.sin(t * Math.PI * 6) * 15;
+
+        const x = Math.cos(spiralAngle) * spiralRadius + serpentine;
+        const y = Math.sin(spiralAngle) * spiralRadius + Math.cos(t * Math.PI * 5) * 10;
+
+        points.push(new THREE.Vector3(x, y, z));
+      }
+
+      pathRef.current = new THREE.CatmullRomCurve3(points, false, 'catmullrom', 0.5);
+    }
+  }, []);
 
   useEffect(() => {
     // Start traversal animation
-    if (!hasStarted.current) {
+    if (!hasStarted.current && pathRef.current) {
       hasStarted.current = true;
-      startTimeRef.current = Date.now();
 
-      // Set initial position
-      camera.position.set(0, 0, 100);
-      camera.lookAt(0, 0, 0);
+      // Set initial position at the start of the path
+      const startPos = pathRef.current.getPoint(0);
+      camera.position.copy(startPos);
 
       // Widen FOV for speed effect
       gsap.to(camera, {
-        fov: 100,
-        duration: 1,
-        ease: "power2.in",
+        fov: 95,
+        duration: 2,
+        ease: "power2.inOut",
         onUpdate: () => {
           camera.updateProjectionMatrix();
         }
       });
 
-      // Animate camera through wormhole
-      gsap.to(camera.position, {
-        z: -400,
-        duration: 6,
+      // Animate progress from 0 to 1 over 8 seconds
+      gsap.to({ progress: 0 }, {
+        progress: 1,
+        duration: 8,
         ease: "power1.inOut",
         onUpdate: function() {
-          const progress = (camera.position.z - 100) / (-400 - 100);
-          setTraversalProgress(Math.max(0, Math.min(1, progress)));
+          const progress = this.targets()[0].progress;
+          setTraversalProgress(progress);
         },
         onComplete: () => {
-          onComplete();
+          // Return to normal FOV before arriving
+          gsap.to(camera, {
+            fov: 70,
+            duration: 1,
+            ease: "power2.out",
+            onUpdate: () => {
+              camera.updateProjectionMatrix();
+            },
+            onComplete: () => {
+              onComplete();
+            }
+          });
         }
       });
     }
   }, [camera, onComplete, setTraversalProgress]);
+
+  useFrame((state) => {
+    if (!pathRef.current || !hasStarted.current) return;
+
+    // Calculate progress based on elapsed time (8 seconds total)
+    const elapsed = state.clock.elapsedTime;
+    const progress = Math.min(elapsed / 8, 1);
+
+    // Get position along the path
+    const currentPos = pathRef.current.getPoint(progress);
+    camera.position.copy(currentPos);
+
+    // Look ahead along the path
+    const lookAheadProgress = Math.min(progress + 0.05, 1);
+    const lookAtPos = pathRef.current.getPoint(lookAheadProgress);
+    camera.lookAt(lookAtPos);
+
+    // Add barrel roll effect for dramatic flair
+    // More intense rolls during the middle of the journey
+    const rollIntensity = Math.sin(progress * Math.PI); // Peak in middle
+    rollOffsetRef.current += rollIntensity * 0.03;
+
+    // Apply roll rotation
+    camera.rotation.z = Math.sin(rollOffsetRef.current) * 0.3 + Math.sin(progress * Math.PI * 3) * 0.15;
+
+    // Add subtle camera shake for intensity
+    if (progress > 0.3 && progress < 0.9) {
+      const shake = (Math.random() - 0.5) * 0.05;
+      camera.position.x += shake;
+      camera.position.y += shake;
+    }
+  });
 
   return null;
 }
@@ -502,19 +714,32 @@ function WormholeScene() {
     <>
       <EnhancedStarfield />
 
+      {/* Distant nebula clouds for atmosphere */}
       <NebulaCloud position={[0, 800, -3500]} scale={2.5} colors={["#1a0b2e", "#6b1fb1", "#ff6b35"]} />
       <NebulaCloud position={[2500, 600, -2500]} scale={2} colors={["#2d1b3d", "#8b4a8f", "#ff6b9d"]} />
+      <NebulaCloud position={[-2500, 400, -2000]} scale={2.2} colors={["#0d1b2a", "#3d4965", "#8fa8d3"]} />
 
-      <SimpleWormholeTunnel />
+      {/* The EPIC twisting wormhole tunnel */}
+      <EpicWormholeTunnel />
 
+      {/* Energy rings marking progress */}
+      <EnergyRings />
+
+      {/* Speed lines rushing past */}
+      <SpeedLines />
+
+      {/* Camera flies through the wormhole */}
       {viewMode === "traversing" && (
         <WormholeTraversalCamera onComplete={handleTraversalComplete} />
       )}
 
-      <ambientLight intensity={0.3} />
-      <pointLight position={[0, 0, 0]} intensity={2} />
+      {/* Lighting for the scene */}
+      <ambientLight intensity={0.4} />
+      <pointLight position={[0, 0, 0]} intensity={3} color="#00d4ff" />
+      <pointLight position={[0, 0, -300]} intensity={2} color="#ff00ff" />
 
-      <fog attach="fog" args={["#000000", 50, 1000]} />
+      {/* Fog for depth */}
+      <fog attach="fog" args={["#000000", 100, 800]} />
     </>
   );
 }
@@ -529,7 +754,7 @@ export default function WormholePage() {
 
   return (
     <div className="h-screen w-full" style={{ backgroundColor: "#000000" }}>
-      {/* Traversal UI Overlay */}
+      {/* Traversal UI Overlay with dynamic messages */}
       {viewMode === "traversing" && (
         <div style={{
           position: 'absolute',
@@ -539,14 +764,38 @@ export default function WormholePage() {
           zIndex: 1000,
           color: '#00ffff',
           fontFamily: "'Orbitron', monospace",
-          fontSize: '32px',
+          fontSize: '36px',
           fontWeight: 'bold',
-          textShadow: '0 0 20px #00ffff',
+          textShadow: '0 0 30px #00ffff, 0 0 60px #00ffff',
           textAlign: 'center',
         }}>
-          <div>APPROACHING EARTH</div>
-          <div style={{ fontSize: '20px', marginTop: '20px' }}>
-            {Math.round(traversalProgress * 100)}%
+          <div style={{
+            marginBottom: '20px',
+            animation: 'pulse 2s ease-in-out infinite'
+          }}>
+            {traversalProgress < 0.3 && 'ENTERING WORMHOLE'}
+            {traversalProgress >= 0.3 && traversalProgress < 0.7 && 'TRAVERSING SPACETIME'}
+            {traversalProgress >= 0.7 && 'APPROACHING EARTH'}
+          </div>
+          <div style={{
+            fontSize: '24px',
+            color: '#ff00ff',
+            textShadow: '0 0 20px #ff00ff'
+          }}>
+            {Math.round(traversalProgress * 100)}% COMPLETE
+          </div>
+
+          {/* Speed indicator */}
+          <div style={{
+            marginTop: '30px',
+            fontSize: '16px',
+            color: '#ffaa00',
+            textShadow: '0 0 15px #ffaa00',
+            opacity: 0.8
+          }}>
+            {traversalProgress < 0.5 && '⚡ ACCELERATING'}
+            {traversalProgress >= 0.5 && traversalProgress < 0.9 && '🌀 MAXIMUM VELOCITY'}
+            {traversalProgress >= 0.9 && '🛬 DECELERATING'}
           </div>
         </div>
       )}
