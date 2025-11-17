@@ -1,6 +1,6 @@
 "use client";
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
-import { OrbitControls, Html, shaderMaterial, Text3D } from "@react-three/drei";
+import { shaderMaterial } from "@react-three/drei";
 import { useEffect, useRef, useState, useMemo, createContext, useContext } from "react";
 import * as THREE from "three";
 import gsap from "gsap";
@@ -374,7 +374,7 @@ function NebulaCloud({ position, scale, colors }: {
 
   useFrame((state) => {
     if (meshRef.current) {
-      const material = meshRef.current.material as any;
+      const material = meshRef.current.material as THREE.ShaderMaterial & { uniforms: { time: { value: number } } };
       material.uniforms.time.value = state.clock.elapsedTime;
     }
   });
@@ -400,7 +400,7 @@ function NebulaCloud({ position, scale, colors }: {
 // Simple wormhole tunnel for the transition to Earth
 function SimpleWormholeTunnel() {
   const tunnelRef = useRef<THREE.Mesh>(null);
-  const materialRef = useRef<any>(null);
+  const materialRef = useRef<THREE.ShaderMaterial & { uniforms: { time: { value: number }; intensity: { value: number } } } | null>(null);
 
   const tubeGeometry = useMemo(() => {
     // Create straight path towards Earth
@@ -482,7 +482,7 @@ function WormholeTraversalCamera({ onComplete }: { onComplete: () => void }) {
 
 function WormholeScene() {
   const router = useRouter();
-  const { viewMode, setViewMode, traversalProgress } = useContext(ViewModeContext);
+  const { viewMode, setViewMode } = useContext(ViewModeContext);
 
   useEffect(() => {
     // Auto-start traversal after a brief moment
