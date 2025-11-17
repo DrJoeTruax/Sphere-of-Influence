@@ -190,13 +190,13 @@ export default function Home() {
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1.5, delay: 0.5 }}
-          className="w-full h-48 md:h-64 mb-8"
+          className="w-full h-64 md:h-80 mb-8"
         >
           <Canvas camera={{ position: [0, 0, 15], fov: 75 }}>
             <Suspense fallback={null}>
               <GravitationalText
                 position={[0, 3, 0]}
-                fontSize={2.5}
+                fontSize={4.5}
                 color="#ffffff"
                 blackHolePosition={[0, 0, -20]}
                 blackHoleMass={150}
