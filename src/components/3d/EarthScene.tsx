@@ -249,15 +249,15 @@ export default function EarthScene({
       {/* Starfield background - stars far from solar system */}
       <EnhancedStarfield count={9000} />
 
-      {/* Sun at center of solar system */}
+      {/* Sun at center of solar system - MASSIVELY LARGER */}
       <mesh ref={sunRef} position={[0, 0, 0]}>
-        <sphereGeometry args={[3, 64, 64]} />
+        <sphereGeometry args={[25, 64, 64]} />
         <meshBasicMaterial color="#ffdd55" />
       </mesh>
 
       {/* Sun glow */}
       <mesh position={[0, 0, 0]}>
-        <sphereGeometry args={[3.5, 64, 64]} />
+        <sphereGeometry args={[28, 64, 64]} />
         <meshBasicMaterial
           color="#ffdd55"
           transparent
@@ -266,19 +266,19 @@ export default function EarthScene({
         />
       </mesh>
 
-      {/* Inner Planets - Orbits extended to fill space to ring */}
+      {/* Inner Planets - Orbits pushed MUCH further out from massive sun */}
       <Planet
         name="Mercury"
-        size={0.2}
-        semiMajor={30}
+        size={0.4}
+        semiMajor={100}
         eccentricity={0.205}
         orbitPeriod={20}
         color="#b5b5b5"
       />
       <Planet
         name="Venus"
-        size={0.45}
-        semiMajor={55}
+        size={0.95}
+        semiMajor={180}
         eccentricity={0.007}
         orbitPeriod={50}
         color="#d4a15f"
@@ -295,14 +295,14 @@ export default function EarthScene({
       {/* Mars - 4th orbit */}
       <Planet
         name="Mars"
-        size={0.35}
-        semiMajor={130}
+        size={0.7}
+        semiMajor={350}
         eccentricity={0.093}
         orbitPeriod={142}
         color="#d15b5b"
         moons={[
-          { size: 0.05, distance: 0.7, color: "#6b5d54", orbitSpeed: 0.3 }, // Phobos
-          { size: 0.04, distance: 1.0, color: "#7a6d64", orbitSpeed: 0.15 }  // Deimos
+          { size: 0.08, distance: 1.2, color: "#6b5d54", orbitSpeed: 0.3 }, // Phobos
+          { size: 0.06, distance: 1.7, color: "#7a6d64", orbitSpeed: 0.15 }  // Deimos
         ]}
       />
 
@@ -311,51 +311,51 @@ export default function EarthScene({
 
       <Planet
         name="Jupiter"
-        size={8.0}
-        semiMajor={280}
+        size={16.0}
+        semiMajor={650}
         eccentricity={0.049}
         orbitPeriod={890}
         color="#b08968"
         moons={[
-          { size: 0.11, distance: 8.5, color: "#c4a55a", orbitSpeed: 0.5 },  // Io
-          { size: 0.09, distance: 10.0, color: "#c9b895", orbitSpeed: 0.35 }, // Europa
-          { size: 0.15, distance: 12.0, color: "#8b7d6b", orbitSpeed: 0.2 },  // Ganymede
-          { size: 0.14, distance: 14.0, color: "#6d6354", orbitSpeed: 0.12 }  // Callisto
+          { size: 0.22, distance: 17.0, color: "#c4a55a", orbitSpeed: 0.5 },  // Io
+          { size: 0.18, distance: 20.0, color: "#c9b895", orbitSpeed: 0.35 }, // Europa
+          { size: 0.30, distance: 24.0, color: "#8b7d6b", orbitSpeed: 0.2 },  // Ganymede
+          { size: 0.28, distance: 28.0, color: "#6d6354", orbitSpeed: 0.12 }  // Callisto
         ]}
       />
       <Planet
         name="Saturn"
-        size={7.0}
-        semiMajor={420}
+        size={14.0}
+        semiMajor={950}
         eccentricity={0.056}
         orbitPeriod={2200}
         color="#cdb79e"
         rings={{
-          innerRadius: 8.0,
-          outerRadius: 13.0,
+          innerRadius: 16.0,
+          outerRadius: 26.0,
           color: "#d4c5a0"
         }}
         moons={[
-          { size: 0.15, distance: 15.0, color: "#daa855", orbitSpeed: 0.1 } // Titan
+          { size: 0.30, distance: 30.0, color: "#daa855", orbitSpeed: 0.1 } // Titan
         ]}
       />
       <Planet
         name="Uranus"
-        size={3.5}
-        semiMajor={600}
+        size={7.0}
+        semiMajor={1350}
         eccentricity={0.047}
         orbitPeriod={6400}
         color="#7ec8e3"
         rings={{
-          innerRadius: 4.0,
-          outerRadius: 6.0,
+          innerRadius: 8.0,
+          outerRadius: 12.0,
           color: "#95b3c9"
         }}
       />
       <Planet
         name="Neptune"
-        size={3.5}
-        semiMajor={780}
+        size={7.0}
+        semiMajor={1750}
         eccentricity={0.009}
         orbitPeriod={12800}
         color="#4b6cb7"
@@ -365,7 +365,7 @@ export default function EarthScene({
       <SphereOfInfluenceRing />
 
       {/* Wormhole portal back to enter page */}
-      {showEarthDetails && <WormholePortal />}
+      {showEarthDetails && <WormholePortal earthPosition={earthPos} />}
 
       {/* Camera Controller */}
       <CameraController

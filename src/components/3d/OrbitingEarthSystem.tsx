@@ -22,8 +22,8 @@ export default function OrbitingEarthSystem({
 }: OrbitingEarthSystemProps) {
   const groupRef = useRef<THREE.Group>(null)
 
-  // Earth's orbital parameters - 3rd orbit position
-  const semiMajor = 85
+  // Earth's orbital parameters - 3rd orbit position (pushed much further from massive sun)
+  const semiMajor = 270
   const eccentricity = 0.017
   const orbitPeriod = 75
   const semiMinor = semiMajor * Math.sqrt(1 - eccentricity ** 2)
