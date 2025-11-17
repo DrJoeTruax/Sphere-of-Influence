@@ -694,14 +694,7 @@ function WormholeTraversalCamera({ onComplete }: { onComplete: () => void }) {
 
 function WormholeScene() {
   const router = useRouter();
-  const { viewMode, setViewMode } = useContext(ViewModeContext);
-
-  useEffect(() => {
-    // Auto-start traversal after a brief moment
-    setTimeout(() => {
-      setViewMode("traversing");
-    }, 1000);
-  }, [setViewMode]);
+  const { viewMode } = useContext(ViewModeContext); // Removed setViewMode since we start in traversing mode
 
   const handleTraversalComplete = () => {
     // Navigate to Earth (hub page)
@@ -745,7 +738,7 @@ function WormholeScene() {
 }
 
 export default function WormholePage() {
-  const [viewMode, setViewMode] = useState<"hub" | "system" | "traversing">("hub");
+  const [viewMode, setViewMode] = useState<"hub" | "system" | "traversing">("traversing"); // Start in traversing mode immediately
   const [selectedSystem, setSelectedSystem] = useState(0);
   const [displayVisible, setDisplayVisible] = useState(true);
   const [traversalProgress, setTraversalProgress] = useState(0);
@@ -754,8 +747,29 @@ export default function WormholePage() {
 
   return (
     <div className="h-screen w-full" style={{ backgroundColor: "#000000" }}>
+      {/* Initial loading message */}
+      {traversalProgress === 0 && viewMode === "traversing" && (
+        <div style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 1000,
+          color: '#00ffff',
+          fontFamily: "'Orbitron', monospace",
+          fontSize: '28px',
+          fontWeight: 'bold',
+          textShadow: '0 0 30px #00ffff, 0 0 60px #00ffff',
+          textAlign: 'center',
+        }}>
+          <div style={{ animation: 'pulse 1.5s ease-in-out infinite' }}>
+            ⚡ INITIALIZING WORMHOLE ⚡
+          </div>
+        </div>
+      )}
+
       {/* Traversal UI Overlay with dynamic messages */}
-      {viewMode === "traversing" && (
+      {viewMode === "traversing" && traversalProgress > 0 && (
         <div style={{
           position: 'absolute',
           top: '50%',
