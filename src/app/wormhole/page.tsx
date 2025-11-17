@@ -582,7 +582,7 @@ function SpeedLines() {
 // EPIC Camera controller that flies THROUGH the wormhole
 function WormholeTraversalCamera({ onComplete }: { onComplete: () => void }) {
   const { camera } = useThree();
-  const { setTraversalProgress } = useContext(ViewModeContext);
+  const { setTraversalProgress, traversalProgress } = useContext(ViewModeContext);
   const hasStarted = useRef(false);
   const pathRef = useRef<THREE.CatmullRomCurve3 | null>(null);
   const rollOffsetRef = useRef(0);
@@ -657,12 +657,11 @@ function WormholeTraversalCamera({ onComplete }: { onComplete: () => void }) {
     }
   }, [camera, onComplete, setTraversalProgress]);
 
-  useFrame((state) => {
+  useFrame(() => {
     if (!pathRef.current || !hasStarted.current) return;
 
-    // Calculate progress based on elapsed time (8 seconds total)
-    const elapsed = state.clock.elapsedTime;
-    const progress = Math.min(elapsed / 8, 1);
+    // Use the gsap-controlled progress from context instead of calculating from time
+    const progress = traversalProgress;
 
     // Get position along the path
     const currentPos = pathRef.current.getPoint(progress);
