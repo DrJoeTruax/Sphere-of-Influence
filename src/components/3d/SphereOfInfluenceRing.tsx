@@ -12,17 +12,29 @@ function SingleRing({ axis }: { axis: 'x' | 'y' | 'z' }) {
   const repeat = 4
   const fullText = Array(repeat).fill(text).join("")
   const chars = fullText.split("")
-  const radius = 880
+  const radius = 2100 // Increased dramatically to match larger solar system
 
-  useFrame(() => {
+  useFrame(({ clock }) => {
     if (groupRef.current) {
-      // Each ring rotates continuously on its designated axis
+      // Gyroscope effect - all rings rotate on all axes at different speeds
+      // Each ring has its primary axis but also secondary rotations for gyroscope effect
+      const time = clock.getElapsedTime()
+
       if (axis === 'x') {
-        groupRef.current.rotation.x += 0.001
+        // X ring - primary rotation on X, secondary on Y and Z
+        groupRef.current.rotation.x += 0.003
+        groupRef.current.rotation.y = Math.sin(time * 0.5) * 0.3
+        groupRef.current.rotation.z = Math.cos(time * 0.3) * 0.2
       } else if (axis === 'y') {
-        groupRef.current.rotation.y += 0.001
-      } else if (axis === 'z') {
-        groupRef.current.rotation.z += 0.001
+        // Y ring - primary rotation on Y, secondary on X and Z
+        groupRef.current.rotation.y += 0.003
+        groupRef.current.rotation.x = Math.sin(time * 0.4) * 0.25
+        groupRef.current.rotation.z = Math.cos(time * 0.6) * 0.3
+      } else {
+        // Z ring - primary rotation on Z, secondary on X and Y
+        groupRef.current.rotation.z += 0.003
+        groupRef.current.rotation.x = Math.sin(time * 0.6) * 0.2
+        groupRef.current.rotation.y = Math.cos(time * 0.4) * 0.25
       }
     }
   })

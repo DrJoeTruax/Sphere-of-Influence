@@ -691,14 +691,14 @@ function WormholeTraversalCamera({ onComplete }: { onComplete: () => void }) {
   return null;
 }
 
-function WormholeScene() {
+function WormholeScene({ isReverse }: { isReverse: boolean }) {
   const router = useRouter();
   const { viewMode } = useContext(ViewModeContext); // Removed setViewMode since we start in traversing mode
 
   const handleTraversalComplete = () => {
-    // Navigate to Earth (hub page)
+    // Navigate based on direction
     setTimeout(() => {
-      router.push('/hub');
+      router.push(isReverse ? '/enter' : '/hub');
     }, 500);
   };
 
@@ -737,12 +737,17 @@ function WormholeScene() {
 }
 
 export default function WormholePage() {
+  const router = useRouter();
   const [viewMode, setViewMode] = useState<"hub" | "system" | "traversing">("traversing"); // Start in traversing mode immediately
   const [selectedSystem, setSelectedSystem] = useState(0);
   const [displayVisible, setDisplayVisible] = useState(true);
   const [traversalProgress, setTraversalProgress] = useState(0);
   const [sourceSystem, setSourceSystem] = useState(0);
   const [destinationSystem, setDestinationSystem] = useState(0);
+
+  // Check if we're going in reverse (hub -> enter)
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const isReverse = searchParams?.get('reverse') === 'true';
 
   return (
     <div className="h-screen w-full" style={{ backgroundColor: "#000000" }}>
@@ -786,9 +791,19 @@ export default function WormholePage() {
             marginBottom: '20px',
             animation: 'pulse 2s ease-in-out infinite'
           }}>
-            {traversalProgress < 0.3 && 'ENTERING WORMHOLE'}
-            {traversalProgress >= 0.3 && traversalProgress < 0.7 && 'TRAVERSING SPACETIME'}
-            {traversalProgress >= 0.7 && 'APPROACHING EARTH'}
+            {isReverse ? (
+              <>
+                {traversalProgress < 0.3 && 'ENTERING WORMHOLE'}
+                {traversalProgress >= 0.3 && traversalProgress < 0.7 && 'TRAVERSING SPACETIME'}
+                {traversalProgress >= 0.7 && 'RETURNING TO ENTRY'}
+              </>
+            ) : (
+              <>
+                {traversalProgress < 0.3 && 'ENTERING WORMHOLE'}
+                {traversalProgress >= 0.3 && traversalProgress < 0.7 && 'TRAVERSING SPACETIME'}
+                {traversalProgress >= 0.7 && 'APPROACHING EARTH'}
+              </>
+            )}
           </div>
           <div style={{
             fontSize: '24px',
@@ -837,7 +852,7 @@ export default function WormholePage() {
         }}>
           <color attach="background" args={["#000000"]} />
 
-          <WormholeScene />
+          <WormholeScene isReverse={isReverse} />
 
           <EffectComposer>
             <Bloom
