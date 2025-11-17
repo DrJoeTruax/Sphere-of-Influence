@@ -1,0 +1,179 @@
+'use client'
+
+import { useRef } from 'react'
+import { useFrame, useThree } from '@react-three/fiber'
+import { useRouter } from 'next/navigation'
+import * as THREE from 'three'
+import { shaderMaterial } from '@react-three/drei'
+
+// Use the same wormhole shader from the wormhole page
+const WormholeMaterial = shaderMaterial(
+  {
+    time: 0,
+    color1: new THREE.Color("#00d4ff"),
+    color2: new THREE.Color("#ff00ff"),
+    color3: new THREE.Color("#ffaa00"),
+    intensity: 1.0,
+  },
+  // Vertex shader
+  `
+    varying vec2 vUv;
+    varying vec3 vPosition;
+    varying vec3 vNormal;
+    void main() {
+      vUv = uv;
+      vPosition = position;
+      vNormal = normalize(normalMatrix * normal);
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  // Fragment shader
+  `
+    uniform float time;
+    uniform vec3 color1;
+    uniform vec3 color2;
+    uniform vec3 color3;
+    uniform float intensity;
+    varying vec2 vUv;
+    varying vec3 vPosition;
+    varying vec3 vNormal;
+
+    float rand(vec2 co) {
+      return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
+    }
+
+    float noise(vec3 p) {
+      vec3 i = floor(p);
+      vec3 f = fract(p);
+      f = f * f * (3.0 - 2.0 * f);
+
+      float n = i.x + i.y * 157.0 + 113.0 * i.z;
+      return mix(
+        mix(mix(rand(vec2(n + 0.0, n)), rand(vec2(n + 1.0, n)), f.x),
+            mix(rand(vec2(n + 157.0, n)), rand(vec2(n + 158.0, n)), f.x), f.y),
+        mix(mix(rand(vec2(n + 113.0, n)), rand(vec2(n + 114.0, n)), f.x),
+            mix(rand(vec2(n + 270.0, n)), rand(vec2(n + 271.0, n)), f.x), f.y), f.z);
+    }
+
+    void main() {
+      float angle = atan(vUv.y - 0.5, vUv.x - 0.5);
+      float radius = length(vUv - 0.5) * 2.0;
+
+      float spiral1 = sin(angle * 12.0 + time * 3.0 - radius * 15.0) * 0.5 + 0.5;
+      float spiral2 = sin(angle * 8.0 - time * 2.5 + radius * 10.0) * 0.5 + 0.5;
+      float spiral3 = sin(angle * 16.0 + time * 4.0 - radius * 20.0) * 0.5 + 0.5;
+
+      float tunnel = 1.0 - smoothstep(0.0, 0.6, radius);
+      float pulse = sin(time * 3.0) * 0.2 + 0.8;
+      tunnel *= pulse;
+
+      float rings = sin(vUv.y * 40.0 - time * 8.0) * 0.5 + 0.5;
+      rings *= sin(vUv.x * 40.0 + time * 6.0) * 0.5 + 0.5;
+
+      vec3 noiseCoord = vec3(vUv * 10.0, time * 0.5);
+      float particles = noise(noiseCoord);
+      particles = pow(particles, 3.0);
+
+      float lightning = noise(vec3(vUv * 20.0, time * 2.0));
+      lightning = smoothstep(0.85, 0.95, lightning);
+
+      float pattern = spiral1 * 0.4 + spiral2 * 0.3 + spiral3 * 0.3;
+      pattern = pattern * tunnel * (0.7 + rings * 0.3);
+      pattern += particles * 0.4 + lightning * 0.8;
+
+      vec3 color = mix(color1, color2, pattern);
+      color = mix(color, color3, smoothstep(0.4, 0.8, pattern));
+
+      color += vec3(1.0) * lightning * 0.5;
+      color += vec3(particles) * color1 * 0.3;
+
+      float edge = smoothstep(0.5, 0.6, radius);
+      float glow = (1.0 - edge) * tunnel;
+
+      float alpha = tunnel * (0.7 + pattern * 0.3) * intensity;
+      alpha += glow * 0.3;
+
+      float centerFade = mix(0.4, 1.0, 1.0 - smoothstep(0.4, 0.65, radius));
+      alpha *= centerFade;
+
+      float fresnel = pow(1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0))), 3.0);
+      color += fresnel * color2 * 0.5;
+      alpha += fresnel * 0.2;
+
+      gl_FragColor = vec4(color, alpha);
+    }
+  `
+)
+
+export default function WormholePortal() {
+  const router = useRouter()
+  const { raycaster, camera, gl } = useThree()
+  const portalRef = useRef<THREE.Mesh>(null)
+  const materialRef = useRef<THREE.ShaderMaterial & { uniforms: { time: { value: number }; intensity: { value: number } } } | null>(null)
+  const glowRef = useRef<THREE.Mesh>(null)
+
+  useFrame((state) => {
+    if (materialRef.current) {
+      materialRef.current.uniforms.time.value = state.clock.elapsedTime
+      materialRef.current.uniforms.intensity.value = 1.5 + Math.sin(state.clock.elapsedTime * 2) * 0.3
+    }
+
+    // Pulsing glow effect
+    if (glowRef.current) {
+      const scale = 1 + Math.sin(state.clock.elapsedTime * 1.5) * 0.1
+      glowRef.current.scale.set(scale, scale, 1)
+    }
+  })
+
+  const handleClick = (event: THREE.Event) => {
+    event.stopPropagation()
+    // Navigate to enter page through wormhole
+    router.push('/enter')
+  }
+
+  return (
+    <group position={[0, 10, -20]}>
+      {/* Wormhole portal mesh */}
+      <mesh
+        ref={portalRef}
+        onClick={handleClick}
+        onPointerOver={() => {
+          if (gl.domElement) {
+            gl.domElement.style.cursor = 'pointer'
+          }
+        }}
+        onPointerOut={() => {
+          if (gl.domElement) {
+            gl.domElement.style.cursor = 'default'
+          }
+        }}
+      >
+        <circleGeometry args={[5, 64]} />
+        <primitive
+          ref={materialRef}
+          object={new WormholeMaterial()}
+          attach="material"
+          transparent
+          side={THREE.DoubleSide}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </mesh>
+
+      {/* Glowing ring around portal */}
+      <mesh ref={glowRef}>
+        <ringGeometry args={[4.8, 5.2, 64]} />
+        <meshBasicMaterial
+          color="#00ffff"
+          transparent
+          opacity={0.6}
+          side={THREE.DoubleSide}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+
+      {/* Point light for ambient glow */}
+      <pointLight position={[0, 0, 2]} intensity={50} color="#00d4ff" distance={30} />
+    </group>
+  )
+}

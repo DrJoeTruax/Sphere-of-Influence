@@ -10,6 +10,7 @@ import EnhancedStarfield from './EnhancedStarfield'
 import Planet from './Planet'
 import SphereOfInfluenceRing from './SphereOfInfluenceRing'
 import AsteroidBelt from './AsteroidBelt'
+import WormholePortal from './WormholePortal'
 
 const EARTH_RADIUS = 1.5
 
@@ -362,6 +363,9 @@ export default function EarthScene({
 
       {/* Sphere of Influence ring at the outer edge */}
       <SphereOfInfluenceRing />
+
+      {/* Wormhole portal back to enter page */}
+      {showEarthDetails && <WormholePortal />}
 
       {/* Camera Controller */}
       <CameraController
