@@ -119,29 +119,49 @@ export default function WormholePortal({ earthPosition }: WormholePortalProps) {
   const tubeMaterialRef = useRef<THREE.ShaderMaterial & { uniforms: { time: { value: number }; intensity: { value: number } } } | null>(null)
   const glowRef = useRef<THREE.Mesh>(null)
 
-  // Create a long tube path extending into space
-  const tubePath = useMemo(() => {
-    const points: THREE.Vector3[] = []
-    const tubeLength = 200 // Long tube extending into space
-    const segments = 100
+  // Earth's orbital parameters (matching OrbitingEarthSystem)
+  const EARTH_SEMI_MAJOR = 270
+  const EARTH_ECCENTRICITY = 0.017
+  const EARTH_SEMI_MINOR = EARTH_SEMI_MAJOR * Math.sqrt(1 - EARTH_ECCENTRICITY ** 2)
 
-    for (let i = 0; i <= segments; i++) {
-      const t = i / segments
-      const z = t * tubeLength
-      // Slight spiral to make it more dynamic
-      const spiralRadius = 0.5 + t * 2
-      const spiralAngle = t * Math.PI * 4
-      const x = Math.cos(spiralAngle) * spiralRadius
-      const y = Math.sin(spiralAngle) * spiralRadius
-      points.push(new THREE.Vector3(x, y, z))
+  // Create a dynamic tube path that extends from high above the solar system
+  // down to the opposite side of Earth's orbit
+  const { tubePath, exitPosition } = useMemo(() => {
+    // High anchor point - well above the solar system (Neptune is at ~1757 max)
+    const anchorY = 2500
+    const anchorPoint = new THREE.Vector3(0, anchorY, 0)
+
+    // We'll calculate the exit point dynamically in useFrame, but need an initial value
+    const initialExitPoint = new THREE.Vector3(-EARTH_SEMI_MAJOR, 0, 0)
+
+    // Create a curved path with multiple control points to avoid planets
+    // The path twists and bends from above down to the exit
+    const controlPoints = [
+      anchorPoint,
+      // High curve - start bending to the side
+      new THREE.Vector3(400, 2000, 200),
+      // Mid-high - continue curving
+      new THREE.Vector3(700, 1500, -300),
+      // Mid - twist around Jupiter/Saturn region
+      new THREE.Vector3(500, 1000, -600),
+      // Lower-mid - curve toward exit
+      new THREE.Vector3(200, 500, -400),
+      // Near exit - straighten out
+      new THREE.Vector3(-100, 100, -200),
+      // Exit point (will be updated dynamically)
+      initialExitPoint
+    ]
+
+    return {
+      tubePath: new THREE.CatmullRomCurve3(controlPoints),
+      exitPosition: initialExitPoint
     }
-
-    return new THREE.CatmullRomCurve3(points)
   }, [])
 
-  const tubeGeometry = useMemo(() => {
-    return new THREE.TubeGeometry(tubePath, 100, 2, 16, false)
-  }, [tubePath])
+  // Store the initial tube geometry but we'll update it each frame
+  const tubeGeometryRef = useRef<THREE.TubeGeometry>(
+    new THREE.TubeGeometry(tubePath, 100, 2, 16, false)
+  )
 
   useFrame((state) => {
     if (materialRef.current) {
@@ -160,22 +180,58 @@ export default function WormholePortal({ earthPosition }: WormholePortalProps) {
       glowRef.current.scale.set(scale, scale, 1)
     }
 
-    // Position the wormhole portal to keep pace with Earth on one side
-    // Place it to the right of Earth (positive X in Earth's local space)
+    // Calculate the exit position on the OPPOSITE side of Earth's orbit
     if (groupRef.current && earthPosition.current) {
-      const offset = 15 // Distance from Earth's center
-      groupRef.current.position.set(
-        earthPosition.current.x + offset,
-        earthPosition.current.y,
-        earthPosition.current.z
-      )
+      // Calculate Earth's current angle in its orbit
+      const earthAngle = Math.atan2(earthPosition.current.z, earthPosition.current.x)
 
-      // Orient the tube to point away from Earth
-      const direction = new THREE.Vector3(offset, 0, 0).normalize()
+      // Opposite side is 180 degrees (PI radians) away
+      const oppositeAngle = earthAngle + Math.PI
+
+      // Calculate the exit point on the opposite side of the orbit
+      const exitX = EARTH_SEMI_MAJOR * Math.cos(oppositeAngle) - EARTH_SEMI_MAJOR * EARTH_ECCENTRICITY
+      const exitZ = EARTH_SEMI_MINOR * Math.sin(oppositeAngle)
+
+      // Update the exit position
+      exitPosition.set(exitX, 0, exitZ)
+
+      // Update the last control point of the tube path to match the exit
+      const points = tubePath.points
+      if (points.length > 0) {
+        points[points.length - 1].copy(exitPosition)
+        // Also update the second-to-last point to create a smooth approach
+        if (points.length > 1) {
+          const approachHeight = 50
+          const approachDistance = 30
+          const directionToExit = new THREE.Vector3(exitX, 0, exitZ).normalize()
+          points[points.length - 2].set(
+            exitX - directionToExit.x * approachDistance,
+            approachHeight,
+            exitZ - directionToExit.z * approachDistance
+          )
+        }
+
+        // Regenerate the tube geometry with the updated path
+        if (tubeRef.current && tubeGeometryRef.current) {
+          const newGeometry = new THREE.TubeGeometry(tubePath, 100, 2, 16, false)
+          tubeRef.current.geometry.dispose() // Clean up old geometry
+          tubeRef.current.geometry = newGeometry
+          tubeGeometryRef.current = newGeometry
+        }
+      }
+
+      // Position the portal group at the exit point
+      groupRef.current.position.copy(exitPosition)
+
+      // Orient the portal to face Earth (so it opens toward Earth)
+      const directionToEarth = new THREE.Vector3()
+        .subVectors(earthPosition.current, exitPosition)
+        .normalize()
+
       const up = new THREE.Vector3(0, 1, 0)
       const quaternion = new THREE.Quaternion()
       const targetMatrix = new THREE.Matrix4()
-      targetMatrix.lookAt(new THREE.Vector3(0, 0, 0), direction, up)
+      targetMatrix.lookAt(new THREE.Vector3(0, 0, 0), directionToEarth, up)
       quaternion.setFromRotationMatrix(targetMatrix)
       groupRef.current.quaternion.copy(quaternion)
     }
@@ -228,8 +284,8 @@ export default function WormholePortal({ earthPosition }: WormholePortalProps) {
         />
       </mesh>
 
-      {/* Long wormhole tube extending into space */}
-      <mesh ref={tubeRef} geometry={tubeGeometry}>
+      {/* Long wormhole tube extending from above solar system to exit point */}
+      <mesh ref={tubeRef} geometry={tubeGeometryRef.current}>
         <primitive
           ref={tubeMaterialRef}
           object={new WormholeMaterial()}
