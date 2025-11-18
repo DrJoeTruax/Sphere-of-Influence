@@ -119,49 +119,62 @@ export default function WormholePortal({ earthPosition }: WormholePortalProps) {
   const tubeMaterialRef = useRef<THREE.ShaderMaterial & { uniforms: { time: { value: number }; intensity: { value: number } } } | null>(null)
   const glowRef = useRef<THREE.Mesh>(null)
 
-  // Earth's orbital parameters (matching OrbitingEarthSystem)
-  const EARTH_SEMI_MAJOR = 270
-  const EARTH_ECCENTRICITY = 0.017
-  const EARTH_SEMI_MINOR = EARTH_SEMI_MAJOR * Math.sqrt(1 - EARTH_ECCENTRICITY ** 2)
+  // Moon orbit radius from OrbitingEarthSystem
+  const MOON_ORBIT_RADIUS = 6.0
+  // Portal distance just beyond the Moon
+  const PORTAL_DISTANCE = 7.5
 
-  // Create a dynamic tube path that extends from high above the solar system
-  // down to the opposite side of Earth's orbit
-  const { tubePath, exitPosition } = useMemo(() => {
-    // High anchor point - well above the solar system (Neptune is at ~1757 max)
-    const anchorY = 2500
-    const anchorPoint = new THREE.Vector3(0, anchorY, 0)
+  // Outer edge of solar system (Sphere of Influence ring radius)
+  const OUTER_EDGE_RADIUS = 2100
 
-    // We'll calculate the exit point dynamically in useFrame, but need an initial value
-    const initialExitPoint = new THREE.Vector3(-EARTH_SEMI_MAJOR, 0, 0)
+  // Create a dynamic tube path that weaves through the solar system
+  // Portal stays near Earth, tube extends to outer edge with many twists
+  const controlPointsRef = useRef<THREE.Vector3[]>([])
+  const tubePath = useRef<THREE.CatmullRomCurve3 | null>(null)
 
-    // Create a curved path with multiple control points to avoid planets
-    // The path twists and bends from above down to the exit
-    const controlPoints = [
-      anchorPoint,
-      // High curve - start bending to the side
-      new THREE.Vector3(400, 2000, 200),
-      // Mid-high - continue curving
-      new THREE.Vector3(700, 1500, -300),
-      // Mid - twist around Jupiter/Saturn region
-      new THREE.Vector3(500, 1000, -600),
-      // Lower-mid - curve toward exit
-      new THREE.Vector3(200, 500, -400),
-      // Near exit - straighten out
-      new THREE.Vector3(-100, 100, -200),
-      // Exit point (will be updated dynamically)
-      initialExitPoint
+  // Initialize control points
+  useMemo(() => {
+    // Start point: near Earth (will be updated dynamically)
+    const startPoint = new THREE.Vector3(PORTAL_DISTANCE, 0, 0)
+
+    // Create many control points that weave in and out of planetary orbits
+    // Mercury orbit: ~100, Venus: ~180, Earth: ~270, Mars: ~350,
+    // Asteroid belt: ~450, Jupiter: ~650, Saturn: ~950, Uranus: ~1350, Neptune: ~1750
+    const points = [
+      startPoint,
+      // Weave outward from Earth with many twists
+      new THREE.Vector3(50, 20, -30),
+      new THREE.Vector3(120, -40, 60),   // Between Mercury and Venus
+      new THREE.Vector3(200, 80, -90),   // Around Venus orbit
+      new THREE.Vector3(280, -50, 120),  // Just beyond Earth orbit
+      new THREE.Vector3(360, 100, -70),  // Around Mars orbit
+      new THREE.Vector3(420, -80, 150),  // Entering asteroid belt
+      new THREE.Vector3(500, 120, -100), // Through asteroid belt
+      new THREE.Vector3(580, -90, 180),  // Exiting asteroid belt
+      new THREE.Vector3(700, 150, -130), // Around Jupiter
+      new THREE.Vector3(820, -120, 200), // Between Jupiter and Saturn
+      new THREE.Vector3(950, 180, -160), // Around Saturn
+      new THREE.Vector3(1100, -150, 220),// Between Saturn and Uranus
+      new THREE.Vector3(1300, 200, -180),// Around Uranus
+      new THREE.Vector3(1500, -170, 250),// Between Uranus and Neptune
+      new THREE.Vector3(1700, 220, -200),// Around Neptune
+      new THREE.Vector3(1900, -190, 280),// Beyond Neptune
+      new THREE.Vector3(OUTER_EDGE_RADIUS, 0, 0) // Exit at 90° on outer edge
     ]
 
-    return {
-      tubePath: new THREE.CatmullRomCurve3(controlPoints),
-      exitPosition: initialExitPoint
-    }
+    controlPointsRef.current = points
+    tubePath.current = new THREE.CatmullRomCurve3(points)
+
+    return null
   }, [])
 
   // Store the initial tube geometry but we'll update it each frame
-  const tubeGeometryRef = useRef<THREE.TubeGeometry>(
-    new THREE.TubeGeometry(tubePath, 100, 2, 16, false)
-  )
+  const tubeGeometryRef = useRef<THREE.TubeGeometry | null>(null)
+
+  // Initialize geometry once tubePath is ready
+  if (!tubeGeometryRef.current && tubePath.current) {
+    tubeGeometryRef.current = new THREE.TubeGeometry(tubePath.current, 100, 2, 16, false)
+  }
 
   useFrame((state) => {
     if (materialRef.current) {
@@ -180,60 +193,81 @@ export default function WormholePortal({ earthPosition }: WormholePortalProps) {
       glowRef.current.scale.set(scale, scale, 1)
     }
 
-    // Calculate the exit position on the OPPOSITE side of Earth's orbit
-    if (groupRef.current && earthPosition.current) {
-      // Calculate Earth's current angle in its orbit
-      const earthAngle = Math.atan2(earthPosition.current.z, earthPosition.current.x)
+    // Keep the wormhole portal connected to Earth
+    if (groupRef.current && earthPosition.current && tubePath.current) {
+      const time = state.clock.elapsedTime
 
-      // Opposite side is 180 degrees (PI radians) away
-      const oppositeAngle = earthAngle + Math.PI
+      // Position portal just beyond the Moon's orbit from Earth
+      // Add some gentle floating motion to make it "alive"
+      const floatOffset = Math.sin(time * 0.5) * 0.3
+      const portalOffsetAngle = time * 0.1 // Slowly orbit around Earth
+      const portalX = earthPosition.current.x + Math.cos(portalOffsetAngle) * PORTAL_DISTANCE
+      const portalY = earthPosition.current.y + floatOffset
+      const portalZ = earthPosition.current.z + Math.sin(portalOffsetAngle) * PORTAL_DISTANCE
 
-      // Calculate the exit point on the opposite side of the orbit
-      const exitX = EARTH_SEMI_MAJOR * Math.cos(oppositeAngle) - EARTH_SEMI_MAJOR * EARTH_ECCENTRICITY
-      const exitZ = EARTH_SEMI_MINOR * Math.sin(oppositeAngle)
+      // Position the portal group
+      groupRef.current.position.set(portalX, portalY, portalZ)
 
-      // Update the exit position
-      exitPosition.set(exitX, 0, exitZ)
-
-      // Update the last control point of the tube path to match the exit
-      const points = tubePath.points
-      if (points.length > 0) {
-        points[points.length - 1].copy(exitPosition)
-        // Also update the second-to-last point to create a smooth approach
-        if (points.length > 1) {
-          const approachHeight = 50
-          const approachDistance = 30
-          const directionToExit = new THREE.Vector3(exitX, 0, exitZ).normalize()
-          points[points.length - 2].set(
-            exitX - directionToExit.x * approachDistance,
-            approachHeight,
-            exitZ - directionToExit.z * approachDistance
-          )
-        }
-
-        // Regenerate the tube geometry with the updated path
-        if (tubeRef.current && tubeGeometryRef.current) {
-          const newGeometry = new THREE.TubeGeometry(tubePath, 100, 2, 16, false)
-          tubeRef.current.geometry.dispose() // Clean up old geometry
-          tubeRef.current.geometry = newGeometry
-          tubeGeometryRef.current = newGeometry
-        }
-      }
-
-      // Position the portal group at the exit point
-      groupRef.current.position.copy(exitPosition)
-
-      // Orient the portal to face Earth (so it opens toward Earth)
-      const directionToEarth = new THREE.Vector3()
-        .subVectors(earthPosition.current, exitPosition)
-        .normalize()
+      // Orient the portal perpendicular to Earth's direction
+      const directionFromEarth = new THREE.Vector3(
+        portalX - earthPosition.current.x,
+        portalY - earthPosition.current.y,
+        portalZ - earthPosition.current.z
+      ).normalize()
 
       const up = new THREE.Vector3(0, 1, 0)
       const quaternion = new THREE.Quaternion()
       const targetMatrix = new THREE.Matrix4()
-      targetMatrix.lookAt(new THREE.Vector3(0, 0, 0), directionToEarth, up)
+      targetMatrix.lookAt(new THREE.Vector3(0, 0, 0), directionFromEarth, up)
       quaternion.setFromRotationMatrix(targetMatrix)
       groupRef.current.quaternion.copy(quaternion)
+
+      // Update the first control point to match portal position
+      controlPointsRef.current[0].set(portalX, portalY, portalZ)
+
+      // Add "alive" behavior: make control points breathe and avoid bodies
+      const points = controlPointsRef.current
+      for (let i = 1; i < points.length - 1; i++) {
+        const point = points[i]
+        const baseRadius = Math.sqrt(point.x * point.x + point.z * point.z)
+
+        // Breathing motion - subtle wave along the tube
+        const breathPhase = time * 0.8 + i * 0.3
+        const breathAmount = Math.sin(breathPhase) * 15
+
+        // Perpendicular offset for breathing
+        const angle = Math.atan2(point.z, point.x)
+        const perpAngle = angle + Math.PI / 2
+        const breathX = Math.cos(perpAngle) * breathAmount
+        const breathZ = Math.sin(perpAngle) * breathAmount
+
+        // Vertical undulation
+        const undulatePhase = time * 0.6 + i * 0.2
+        const undulateAmount = Math.sin(undulatePhase) * 20
+
+        // Apply gentle movement
+        point.x += (breathX - point.x * 0.01) * 0.1
+        point.z += (breathZ - point.z * 0.01) * 0.1
+        point.y += (undulateAmount - point.y * 0.01) * 0.1
+
+        // Keep points roughly at their orbital radius (soft constraint)
+        const currentRadius = Math.sqrt(point.x * point.x + point.z * point.z)
+        const radiusCorrection = (baseRadius - currentRadius) * 0.02
+        const corrAngle = Math.atan2(point.z, point.x)
+        point.x += Math.cos(corrAngle) * radiusCorrection
+        point.z += Math.sin(corrAngle) * radiusCorrection
+      }
+
+      // Update the curve with new control points
+      tubePath.current.points = points
+
+      // Regenerate the tube geometry with the updated path
+      if (tubeRef.current && tubeGeometryRef.current && tubePath.current) {
+        const newGeometry = new THREE.TubeGeometry(tubePath.current, 100, 2, 16, false)
+        tubeRef.current.geometry.dispose() // Clean up old geometry
+        tubeRef.current.geometry = newGeometry
+        tubeGeometryRef.current = newGeometry
+      }
     }
   })
 
@@ -284,18 +318,20 @@ export default function WormholePortal({ earthPosition }: WormholePortalProps) {
         />
       </mesh>
 
-      {/* Long wormhole tube extending from above solar system to exit point */}
-      <mesh ref={tubeRef} geometry={tubeGeometryRef.current}>
-        <primitive
-          ref={tubeMaterialRef}
-          object={new WormholeMaterial()}
-          attach="material"
-          transparent
-          side={THREE.DoubleSide}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-        />
-      </mesh>
+      {/* Long wormhole tube weaving through solar system */}
+      {tubeGeometryRef.current && (
+        <mesh ref={tubeRef} geometry={tubeGeometryRef.current}>
+          <primitive
+            ref={tubeMaterialRef}
+            object={new WormholeMaterial()}
+            attach="material"
+            transparent
+            side={THREE.DoubleSide}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+          />
+        </mesh>
+      )}
 
       {/* Point light for ambient glow */}
       <pointLight position={[0, 0, 2]} intensity={50} color="#00d4ff" distance={30} />
