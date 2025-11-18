@@ -72,13 +72,13 @@ function SingleRing({ axis }: { axis: 'x' | 'y' | 'z' }) {
           <Text3D
             key={`${axis}-${i}`}
             font="/fonts/helvetiker_regular.typeface.json"
-            size={12}
-            height={2}
+            size={40}
+            height={6}
             position={position}
             rotation={rotation}
             bevelEnabled
-            bevelThickness={0.8}
-            bevelSize={0.4}
+            bevelThickness={2.5}
+            bevelSize={1.5}
             bevelSegments={3}
           >
             {ch}
