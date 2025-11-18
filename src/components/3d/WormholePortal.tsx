@@ -112,12 +112,14 @@ interface WormholePortalProps {
 export default function WormholePortal({ earthPosition }: WormholePortalProps) {
   const router = useRouter()
   const { raycaster, camera, gl } = useThree()
-  const portalRef = useRef<THREE.Mesh>(null)
+  const portalStartRef = useRef<THREE.Mesh>(null)
+  const portalEndRef = useRef<THREE.Mesh>(null)
   const tubeRef = useRef<THREE.Mesh>(null)
   const groupRef = useRef<THREE.Group>(null)
   const materialRef = useRef<THREE.ShaderMaterial & { uniforms: { time: { value: number }; intensity: { value: number } } } | null>(null)
   const tubeMaterialRef = useRef<THREE.ShaderMaterial & { uniforms: { time: { value: number }; intensity: { value: number } } } | null>(null)
-  const glowRef = useRef<THREE.Mesh>(null)
+  const glowStartRef = useRef<THREE.Mesh>(null)
+  const glowEndRef = useRef<THREE.Mesh>(null)
 
   // Portal distance just beyond the Moon
   const PORTAL_DISTANCE = 7.5
@@ -128,6 +130,9 @@ export default function WormholePortal({ earthPosition }: WormholePortalProps) {
   // Tube extends far off-screen
   const TUBE_LENGTH = 3000
 
+  // Track exit position for portal
+  const exitPositionRef = useRef(new THREE.Vector3(TUBE_LENGTH, TUBE_HEIGHT, 1000))
+
   // Create a simple tube path that runs parallel to the solar system
   const tubePath = useMemo(() => {
     // Start point: near Earth (will be updated dynamically)
@@ -135,6 +140,7 @@ export default function WormholePortal({ earthPosition }: WormholePortalProps) {
 
     // Create a path that goes above the solar system and extends off-screen
     // Add gentle curves for visual interest but keep it mostly straight
+    // Then curve back at the end so exit faces Earth
     const points = [
       startPoint,
       new THREE.Vector3(200, TUBE_HEIGHT * 0.3, 100),
@@ -143,15 +149,40 @@ export default function WormholePortal({ earthPosition }: WormholePortalProps) {
       new THREE.Vector3(1200, TUBE_HEIGHT, 400),
       new THREE.Vector3(1800, TUBE_HEIGHT, 600),
       new THREE.Vector3(2400, TUBE_HEIGHT, 800),
+      new THREE.Vector3(2800, TUBE_HEIGHT, 900),
+      // Curve back slightly so exit faces toward Earth
+      new THREE.Vector3(TUBE_LENGTH - 200, TUBE_HEIGHT, 950),
       new THREE.Vector3(TUBE_LENGTH, TUBE_HEIGHT, 1000)
     ]
+
+    exitPositionRef.current.set(TUBE_LENGTH, TUBE_HEIGHT, 1000)
 
     return new THREE.CatmullRomCurve3(points)
   }, [])
 
   const tubeGeometry = useMemo(() => {
-    return new THREE.TubeGeometry(tubePath, 100, 2, 16, false)
+    return new THREE.TubeGeometry(tubePath, 128, 0.8, 24, false)
   }, [tubePath])
+
+  // Get path points for effects
+  const pathPoints = useMemo(() => {
+    return tubePath.getPoints(128)
+  }, [tubePath])
+
+  // Calculate tangents at start and end for portal orientation
+  const { startTangent, endTangent } = useMemo(() => {
+    const points = pathPoints
+    if (points.length > 1) {
+      const start = new THREE.Vector3().subVectors(points[1], points[0]).normalize()
+      const len = points.length
+      const end = new THREE.Vector3().subVectors(points[len - 1], points[len - 2]).normalize()
+      return { startTangent: start, endTangent: end }
+    }
+    return {
+      startTangent: new THREE.Vector3(1, 0, 0),
+      endTangent: new THREE.Vector3(-1, 0, 0) // Face back toward Earth
+    }
+  }, [pathPoints])
 
   useFrame((state) => {
     if (materialRef.current) {
@@ -165,9 +196,21 @@ export default function WormholePortal({ earthPosition }: WormholePortalProps) {
     }
 
     // Pulsing glow effect
-    if (glowRef.current) {
+    if (glowStartRef.current) {
       const scale = 1 + Math.sin(state.clock.elapsedTime * 1.5) * 0.1
-      glowRef.current.scale.set(scale, scale, 1)
+      glowStartRef.current.scale.set(scale, scale, 1)
+    }
+    if (glowEndRef.current) {
+      const scale = 1 + Math.sin(state.clock.elapsedTime * 1.5) * 0.1
+      glowEndRef.current.scale.set(scale, scale, 1)
+    }
+
+    // Rotate portal rings
+    if (portalStartRef.current) {
+      portalStartRef.current.rotation.z += 0.02
+    }
+    if (portalEndRef.current) {
+      portalEndRef.current.rotation.z -= 0.02
     }
 
     // Keep the wormhole portal connected to Earth
@@ -199,9 +242,9 @@ export default function WormholePortal({ earthPosition }: WormholePortalProps) {
 
   return (
     <group ref={groupRef}>
-      {/* Wormhole portal entrance */}
+      {/* Portal entrance ring at Earth */}
       <mesh
-        ref={portalRef}
+        ref={portalStartRef}
         onClick={handleClick}
         onPointerOver={() => {
           if (gl.domElement) {
@@ -213,27 +256,58 @@ export default function WormholePortal({ earthPosition }: WormholePortalProps) {
             gl.domElement.style.cursor = 'default'
           }
         }}
+        onUpdate={(self) => {
+          self.lookAt(self.position.clone().add(startTangent))
+        }}
       >
-        <circleGeometry args={[5, 64]} />
-        <primitive
-          ref={materialRef}
-          object={new WormholeMaterial()}
-          attach="material"
-          transparent
-          side={THREE.DoubleSide}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-        />
-      </mesh>
-
-      {/* Glowing ring around portal entrance */}
-      <mesh ref={glowRef}>
-        <ringGeometry args={[4.8, 5.2, 64]} />
+        <ringGeometry args={[0.8, 1.5, 32]} />
         <meshBasicMaterial
           color="#00ffff"
           transparent
-          opacity={0.6}
+          opacity={0.8}
           side={THREE.DoubleSide}
+        />
+      </mesh>
+
+      {/* Portal exit ring - faces back toward Earth */}
+      <mesh
+        ref={portalEndRef}
+        position={exitPositionRef.current}
+        onUpdate={(self) => {
+          // Make exit face back toward Earth
+          const dirToEarth = new THREE.Vector3()
+            .subVectors(earthPosition.current, exitPositionRef.current)
+            .normalize()
+          self.lookAt(self.position.clone().add(dirToEarth))
+        }}
+      >
+        <ringGeometry args={[0.8, 1.5, 32]} />
+        <meshBasicMaterial
+          color="#ff00ff"
+          transparent
+          opacity={0.8}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+
+      {/* Glowing sphere at entrance */}
+      <mesh ref={glowStartRef}>
+        <sphereGeometry args={[1.2, 16, 16]} />
+        <meshBasicMaterial
+          color="#00ffff"
+          transparent
+          opacity={0.2}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+
+      {/* Glowing sphere at exit */}
+      <mesh position={exitPositionRef.current} ref={glowEndRef}>
+        <sphereGeometry args={[1.2, 16, 16]} />
+        <meshBasicMaterial
+          color="#ff00ff"
+          transparent
+          opacity={0.2}
           blending={THREE.AdditiveBlending}
         />
       </mesh>
@@ -251,8 +325,33 @@ export default function WormholePortal({ earthPosition }: WormholePortalProps) {
         />
       </mesh>
 
-      {/* Point light for ambient glow */}
-      <pointLight position={[0, 0, 2]} intensity={50} color="#00d4ff" distance={30} />
+      {/* Point lights at portals */}
+      <pointLight position={[0, 0, 0]} intensity={100} color="#00ffff" distance={30} />
+      <pointLight position={exitPositionRef.current} intensity={100} color="#ff00ff" distance={30} />
+
+      {/* Energy particles along the path */}
+      {pathPoints.map((point, i) => {
+        if (i % 8 !== 0) return null
+
+        const progress = i / pathPoints.length
+        const color = new THREE.Color().lerpColors(
+          new THREE.Color("#00ffff"),
+          new THREE.Color("#ff00ff"),
+          progress
+        )
+
+        return (
+          <mesh key={i} position={point}>
+            <sphereGeometry args={[0.15, 8, 8]} />
+            <meshBasicMaterial
+              color={color}
+              transparent
+              opacity={0.6}
+              blending={THREE.AdditiveBlending}
+            />
+          </mesh>
+        )
+      })}
     </group>
   )
 }
