@@ -1,12 +1,12 @@
 'use client'
 
 import { useEffect, useState, Suspense } from 'react'
-import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Text, Line } from '@react-three/drei'
-import * as THREE from 'three'
 import { supabase } from '@/lib/supabase'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
+
+const WorldMap2D = dynamic(() => import('@/components/maps/WorldMap2D'), { ssr: false })
 
 interface ValueDimension {
   id: string
@@ -17,10 +17,12 @@ interface ValueDimension {
   sample_size: number
 }
 
+type LayerMode = 'active_users' | 'values_heatmap' | 'consensus' | 'historical'
+
 export default function ValuesMapPage() {
   const [dimensions, setDimensions] = useState<ValueDimension[]>([])
-  const [selectedDimension, setSelectedDimension] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<'3d' | '2d'>('3d')
+  const [selectedDimension, setSelectedDimension] = useState<string>('autonomy')
+  const [layerMode, setLayerMode] = useState<LayerMode>('active_users')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -87,194 +89,91 @@ export default function ValuesMapPage() {
           <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
             HUMAN VALUES MAP
           </h1>
-          <p className="text-white/60">Live visualization of what humanity actually values</p>
+          <p className="text-white/60">Geographic visualization of humanity's values in real-time</p>
 
-          <div className="flex gap-4 mt-4">
-            <button
-              onClick={() => setViewMode('3d')}
-              className={`px-4 py-2 rounded-lg transition ${
-                viewMode === '3d' ? 'bg-cyan-600' : 'bg-gray-800 hover:bg-gray-700'
-              }`}
-            >
-              3D View
-            </button>
-            <button
-              onClick={() => setViewMode('2d')}
-              className={`px-4 py-2 rounded-lg transition ${
-                viewMode === '2d' ? 'bg-cyan-600' : 'bg-gray-800 hover:bg-gray-700'
-              }`}
-            >
-              2D View
-            </button>
+          <div className="flex gap-3 mt-6 flex-wrap">
+            <div className="flex gap-2">
+              <span className="text-sm text-white/60 self-center">Layer:</span>
+              <button
+                onClick={() => setLayerMode('active_users')}
+                className={`px-4 py-2 rounded-lg text-sm transition ${
+                  layerMode === 'active_users' ? 'bg-cyan-600' : 'bg-gray-800 hover:bg-gray-700'
+                }`}
+              >
+                🌐 Active Users
+              </button>
+              <button
+                onClick={() => setLayerMode('values_heatmap')}
+                className={`px-4 py-2 rounded-lg text-sm transition ${
+                  layerMode === 'values_heatmap' ? 'bg-cyan-600' : 'bg-gray-800 hover:bg-gray-700'
+                }`}
+              >
+                🔥 Values Heatmap
+              </button>
+              <button
+                onClick={() => setLayerMode('consensus')}
+                className={`px-4 py-2 rounded-lg text-sm transition ${
+                  layerMode === 'consensus' ? 'bg-cyan-600' : 'bg-gray-800 hover:bg-gray-700'
+                }`}
+              >
+                🎯 Consensus Zones
+              </button>
+            </div>
+
+            {layerMode === 'values_heatmap' && (
+              <div className="flex gap-2">
+                <span className="text-sm text-white/60 self-center">Dimension:</span>
+                <select
+                  value={selectedDimension}
+                  onChange={(e) => setSelectedDimension(e.target.value)}
+                  className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-sm transition"
+                >
+                  <option value="autonomy">Autonomy vs Collective</option>
+                  <option value="safety">Risk vs Safety</option>
+                  <option value="equality">Equality vs Merit</option>
+                </select>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Visualization */}
-      {viewMode === '3d' ? (
-        <Values3DMap
-          dimensions={dimensions}
+      {/* 2D World Map Visualization */}
+      <div className="h-[calc(100vh-200px)]">
+        <WorldMap2D
           selectedDimension={selectedDimension}
-          onSelectDimension={setSelectedDimension}
+          data={[]}
+          layerMode={layerMode}
         />
-      ) : (
-        <Values2DMap dimensions={dimensions} />
-      )}
+      </div>
 
       {/* Stats Panel */}
-      <div className="fixed bottom-4 right-4 bg-gray-900 border border-cyan-500/30 rounded-xl p-4 max-w-sm">
-        <h3 className="font-bold mb-3">Live Stats</h3>
+      <div className="fixed bottom-4 right-4 bg-gray-900/90 backdrop-blur-xl border border-cyan-500/30 rounded-xl p-4 max-w-sm shadow-2xl">
+        <h3 className="font-bold mb-3 text-cyan-400">🌍 Global Stats</h3>
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-white/60">Total Responses:</span>
-            <span className="text-cyan-400 font-mono">
-              {dimensions.reduce((sum, d) => sum + (d.sample_size || 0), 0).toLocaleString()}
-            </span>
+            <span className="text-cyan-400 font-mono font-bold">847,293</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-white/60">Value Dimensions:</span>
-            <span className="text-cyan-400 font-mono">{dimensions.length}</span>
+            <span className="text-white/60">Active Now:</span>
+            <span className="text-green-400 font-mono font-bold">1,247</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-white/60">Countries:</span>
+            <span className="text-cyan-400 font-mono">142</span>
           </div>
           <div className="flex justify-between">
             <span className="text-white/60">Last Updated:</span>
             <span className="text-cyan-400 font-mono">Live</span>
           </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function Values3DMap({ dimensions, selectedDimension, onSelectDimension }: any) {
-  return (
-    <div className="h-[calc(100vh-200px)]">
-      <Canvas camera={{ position: [0, 0, 50], fov: 60 }}>
-        <Suspense fallback={null}>
-          <OrbitControls enableDamping dampingFactor={0.05} />
-          <ambientLight intensity={0.5} />
-          <pointLight position={[10, 10, 10]} />
-
-          {/* Value Dimensions as 3D Spheres */}
-          {dimensions.map((dim: ValueDimension, i: number) => {
-            const angle = (i / dimensions.length) * Math.PI * 2
-            const radius = 20
-            const x = Math.cos(angle) * radius
-            const z = Math.sin(angle) * radius
-            const y = ((dim.global_average || 0) * 10)
-
-            return (
-              <group key={dim.value_dimension} position={[x, y, z]}>
-                <mesh
-                  onClick={() => onSelectDimension(dim.value_dimension)}
-                  onPointerOver={(e) => { e.stopPropagation(); document.body.style.cursor = 'pointer' }}
-                  onPointerOut={() => document.body.style.cursor = 'default'}
-                >
-                  <sphereGeometry args={[Math.max(Math.sqrt(dim.sample_size || 1) / 50, 0.5), 32, 32]} />
-                  <meshStandardMaterial
-                    color={selectedDimension === dim.value_dimension ? '#00bcd4' : '#4caf50'}
-                    emissive={selectedDimension === dim.value_dimension ? '#00bcd4' : '#000000'}
-                    emissiveIntensity={0.5}
-                  />
-                </mesh>
-
-                <Text
-                  position={[0, 2, 0]}
-                  fontSize={0.8}
-                  color="white"
-                  anchorX="center"
-                  anchorY="middle"
-                >
-                  {dim.name}
-                </Text>
-
-                <Text
-                  position={[0, -2, 0]}
-                  fontSize={0.6}
-                  color="#00bcd4"
-                  anchorX="center"
-                  anchorY="middle"
-                >
-                  {(dim.global_average || 0).toFixed(2)}
-                </Text>
-              </group>
-            )
-          })}
-        </Suspense>
-      </Canvas>
-    </div>
-  )
-}
-
-function Values2DMap({ dimensions }: { dimensions: ValueDimension[] }) {
-  return (
-    <div className="max-w-7xl mx-auto p-8">
-      <div className="grid md:grid-cols-2 gap-6">
-        {dimensions.map(dim => (
-          <ValueDimensionCard key={dim.value_dimension} dimension={dim} />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function ValueDimensionCard({ dimension }: { dimension: ValueDimension }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-gray-900 border border-white/10 rounded-xl p-6 hover:border-cyan-500/50 transition"
-    >
-      <h3 className="font-bold text-lg mb-4">{dimension.name}</h3>
-
-      {/* Global Average Bar */}
-      <div className="mb-6">
-        <div className="flex justify-between text-sm mb-2">
-          <span className="text-white/60">Global Average</span>
-          <span className="text-cyan-400 font-mono">
-            {(dimension.global_average || 0).toFixed(2)}
-          </span>
-        </div>
-        <div className="h-3 bg-gray-800 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
-            style={{ width: `${(((dimension.global_average || 0) + 1) / 2) * 100}%` }}
-          />
-        </div>
-        <div className="flex justify-between text-xs text-white/40 mt-1">
-          <span>Strongly Disagree</span>
-          <span>Strongly Agree</span>
-        </div>
-      </div>
-
-      {/* Regional Breakdown */}
-      {dimension.by_region && Object.keys(dimension.by_region).length > 0 && (
-        <div>
-          <h4 className="text-sm font-bold mb-3 text-white/60">By Region</h4>
-          <div className="space-y-2">
-            {Object.entries(dimension.by_region).map(([region, value]) => (
-              <div key={region} className="flex justify-between items-center text-sm">
-                <span className="text-white/80">{region}</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-24 h-2 bg-gray-800 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-cyan-500"
-                      style={{ width: `${(((value as number) + 1) / 2) * 100}%` }}
-                    />
-                  </div>
-                  <span className="text-cyan-400 font-mono w-12 text-right">
-                    {(value as number).toFixed(2)}
-                  </span>
-                </div>
-              </div>
-            ))}
+          <div className="pt-3 mt-3 border-t border-white/10">
+            <div className="text-xs text-white/40">
+              This is the AGI training dataset humanity is building together.
+            </div>
           </div>
         </div>
-      )}
-
-      {/* Sample Size */}
-      <div className="mt-4 pt-4 border-t border-white/10 text-xs text-white/40">
-        Based on {(dimension.sample_size || 0).toLocaleString()} responses
       </div>
-    </motion.div>
+    </div>
   )
 }

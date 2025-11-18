@@ -7,13 +7,16 @@ import * as THREE from 'three'
 interface BlackHoleProps {
   position?: [number, number, number]
   size?: number
+  interactive?: boolean
 }
 
-export default function BlackHole({ position = [0, 0, -20], size = 5 }: BlackHoleProps) {
+export default function BlackHole({ position = [0, 0, -20], size = 5, interactive = false }: BlackHoleProps) {
   const blackHoleRef = useRef<THREE.Mesh>(null)
   const accretionDiskRef = useRef<THREE.Mesh>(null)
   const particlesRef = useRef<THREE.Points>(null)
   const glowRef = useRef<THREE.Mesh>(null)
+  const jetsRef = useRef<THREE.Group>(null)
+  const lensingRef = useRef<THREE.Mesh>(null)
 
   // Photorealistic black hole shader with gravitational lensing
   const blackHoleShader = useMemo(
@@ -191,34 +194,136 @@ export default function BlackHole({ position = [0, 0, -20], size = 5 }: BlackHol
     []
   )
 
-  // Particle system for matter being pulled in
+  // Relativistic jets shader (polar emissions)
+  const jetsShader = useMemo(
+    () => ({
+      uniforms: {
+        time: { value: 0 },
+        intensity: { value: 1.5 }
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        varying vec3 vPosition;
+
+        void main() {
+          vUv = uv;
+          vPosition = position;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float time;
+        uniform float intensity;
+        varying vec2 vUv;
+        varying vec3 vPosition;
+
+        float noise(vec2 p) {
+          return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+        }
+
+        void main() {
+          float dist = length(vUv - vec2(0.5, 0.5));
+          float core = smoothstep(0.3, 0.0, dist);
+
+          // Turbulent jet flow
+          float turbulence = noise(vUv * 20.0 + time * 0.5);
+          turbulence += noise(vUv * 40.0 - time * 0.3) * 0.5;
+
+          // Synchrotron radiation (magnetic field glow)
+          vec3 jetColor = mix(
+            vec3(0.4, 0.6, 1.0),  // Blue synchrotron
+            vec3(1.0, 0.9, 0.7),  // White core
+            core
+          );
+
+          float alpha = (core + turbulence * 0.3) * intensity;
+          alpha *= smoothstep(1.0, 0.2, dist);
+
+          gl_FragColor = vec4(jetColor, alpha);
+        }
+      `,
+      transparent: true,
+      blending: THREE.AdditiveBlending
+    }),
+    []
+  )
+
+  // Gravitational lensing ring (Einstein ring effect)
+  const lensingShader = useMemo(
+    () => ({
+      uniforms: {
+        time: { value: 0 }
+      },
+      vertexShader: `
+        varying vec2 vUv;
+
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float time;
+        varying vec2 vUv;
+
+        void main() {
+          vec2 center = vec2(0.5, 0.5);
+          float dist = distance(vUv, center);
+
+          // Einstein ring - light bending at photon sphere
+          float ring = smoothstep(0.35, 0.37, dist) * smoothstep(0.42, 0.40, dist);
+
+          // Shimmer effect
+          float shimmer = sin(dist * 50.0 - time * 3.0) * 0.5 + 0.5;
+
+          vec3 color = vec3(0.7, 0.8, 1.0) * (0.8 + shimmer * 0.2);
+          float alpha = ring * 0.6;
+
+          gl_FragColor = vec4(color, alpha);
+        }
+      `,
+      transparent: true,
+      blending: THREE.AdditiveBlending
+    }),
+    []
+  )
+
+  // Enhanced particle system with spaghettification
   const particles = useMemo(() => {
-    const count = 2000
+    const count = 3000 // Increased particle count
     const positions = new Float32Array(count * 3)
+    const velocities = new Float32Array(count * 3)
     const colors = new Float32Array(count * 3)
     const sizes = new Float32Array(count)
+    const lifetimes = new Float32Array(count)
 
     for (let i = 0; i < count; i++) {
       const i3 = i * 3
 
       // Spiral distribution
       const angle = Math.random() * Math.PI * 2
-      const radius = 10 + Math.random() * 20
+      const radius = 10 + Math.random() * 25
 
       positions[i3] = Math.cos(angle) * radius
-      positions[i3 + 1] = (Math.random() - 0.5) * 5
+      positions[i3 + 1] = (Math.random() - 0.5) * 8
       positions[i3 + 2] = Math.sin(angle) * radius
 
-      // Color gradient (blue to orange)
-      const colorMix = Math.random()
-      colors[i3] = colorMix * 1.0 + (1 - colorMix) * 0.3
-      colors[i3 + 1] = colorMix * 0.6 + (1 - colorMix) * 0.5
-      colors[i3 + 2] = colorMix * 0.2 + (1 - colorMix) * 1.0
+      // Initial velocities for orbital motion
+      velocities[i3] = -Math.sin(angle) * 0.02
+      velocities[i3 + 1] = 0
+      velocities[i3 + 2] = Math.cos(angle) * 0.02
 
-      sizes[i] = Math.random() * 0.5 + 0.1
+      // Temperature-based color (Doppler + temperature)
+      const temp = Math.random()
+      colors[i3] = temp * 1.0 + (1 - temp) * 0.3
+      colors[i3 + 1] = temp * 0.7 + (1 - temp) * 0.5
+      colors[i3 + 2] = temp * 0.3 + (1 - temp) * 1.0
+
+      sizes[i] = Math.random() * 0.5 + 0.2
+      lifetimes[i] = Math.random()
     }
 
-    return { positions, colors, sizes }
+    return { positions, velocities, colors, sizes, lifetimes }
   }, [])
 
   useFrame(({ clock }) => {
@@ -241,34 +346,81 @@ export default function BlackHole({ position = [0, 0, -20], size = 5 }: BlackHol
       ;(blackHoleRef.current.material as THREE.ShaderMaterial).uniforms.time.value = t
     }
 
-    // Animate particles spiraling inward
+    // Animate jets (pulsing)
+    if (jetsRef.current) {
+      jetsRef.current.children.forEach((jet) => {
+        const material = (jet as THREE.Mesh).material as THREE.ShaderMaterial
+        if (material.uniforms) {
+          material.uniforms.time.value = t
+          material.uniforms.intensity.value = 1.5 + Math.sin(t * 2) * 0.3
+        }
+      })
+    }
+
+    // Animate gravitational lensing ring
+    if (lensingRef.current) {
+      ;(lensingRef.current.material as THREE.ShaderMaterial).uniforms.time.value = t
+    }
+
+    // Enhanced particle physics with realistic infall
     if (particlesRef.current) {
       const positions = particlesRef.current.geometry.attributes.position.array as Float32Array
+      const colors = particlesRef.current.geometry.attributes.color.array as Float32Array
 
       for (let i = 0; i < positions.length; i += 3) {
         const x = positions[i]
+        const y = positions[i + 1]
         const z = positions[i + 2]
 
         const angle = Math.atan2(z, x)
         const radius = Math.sqrt(x * x + z * z)
 
-        // Spiral inward
-        const newRadius = radius - 0.05
-        const newAngle = angle - 0.02
+        // Schwarzschild radius (event horizon at r = 1)
+        const schwarzschildRadius = size * 0.2
 
-        if (newRadius < 1) {
-          // Reset particle to outer edge
+        // Keplerian velocity: v = sqrt(GM/r)
+        const orbitalSpeed = 1 / Math.sqrt(Math.max(radius, 0.1))
+        const infalSpeed = 0.05 / Math.max(radius * radius, 0.01)
+
+        // Spiral inward with orbital motion
+        const newRadius = radius - infalSpeed
+        const newAngle = angle - orbitalSpeed * 0.02
+
+        // Time dilation effect near event horizon
+        const timeDilation = Math.max(0, 1 - schwarzschildRadius / radius)
+
+        if (newRadius < schwarzschildRadius) {
+          // Particle crossed event horizon - reset to outer edge
           const resetAngle = Math.random() * Math.PI * 2
-          const resetRadius = 30
+          const resetRadius = 30 + Math.random() * 5
           positions[i] = Math.cos(resetAngle) * resetRadius
+          positions[i + 1] = (Math.random() - 0.5) * 8
           positions[i + 2] = Math.sin(resetAngle) * resetRadius
+
+          // Reset color
+          const temp = Math.random()
+          colors[i] = temp * 1.0 + (1 - temp) * 0.3
+          colors[i + 1] = temp * 0.7 + (1 - temp) * 0.5
+          colors[i + 2] = temp * 0.3 + (1 - temp) * 1.0
         } else {
+          // Update position
           positions[i] = Math.cos(newAngle) * newRadius
           positions[i + 2] = Math.sin(newAngle) * newRadius
+
+          // Spaghettification - particles stretch vertically near horizon
+          const stretchFactor = 1 + (1 / (radius * radius)) * 0.5
+          positions[i + 1] = y * timeDilation * stretchFactor
+
+          // Gravitational redshift - particles get redder as they approach
+          const redshift = 1 - timeDilation
+          colors[i] = Math.min(1, colors[i] + redshift * 0.3)
+          colors[i + 1] = colors[i + 1] * (1 - redshift * 0.5)
+          colors[i + 2] = colors[i + 2] * (1 - redshift * 0.7)
         }
       }
 
       particlesRef.current.geometry.attributes.position.needsUpdate = true
+      particlesRef.current.geometry.attributes.color.needsUpdate = true
     }
   })
 
@@ -340,6 +492,36 @@ export default function BlackHole({ position = [0, 0, -20], size = 5 }: BlackHol
           sizeAttenuation
         />
       </points>
+
+      {/* Gravitational lensing ring (Einstein ring) */}
+      <mesh ref={lensingRef}>
+        <sphereGeometry args={[size * 1.1, 128, 128]} />
+        <shaderMaterial
+          {...lensingShader}
+          side={THREE.FrontSide}
+        />
+      </mesh>
+
+      {/* Relativistic jets from poles */}
+      <group ref={jetsRef}>
+        {/* North pole jet */}
+        <mesh position={[0, size * 2, 0]} rotation={[0, 0, 0]}>
+          <cylinderGeometry args={[size * 0.3, size * 0.8, size * 8, 32, 1, true]} />
+          <shaderMaterial
+            {...jetsShader}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+
+        {/* South pole jet */}
+        <mesh position={[0, -size * 2, 0]} rotation={[0, 0, Math.PI]}>
+          <cylinderGeometry args={[size * 0.3, size * 0.8, size * 8, 32, 1, true]} />
+          <shaderMaterial
+            {...jetsShader}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      </group>
 
       {/* Outer glow/photon sphere */}
       <mesh>

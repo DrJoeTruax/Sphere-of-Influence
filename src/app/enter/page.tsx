@@ -5,15 +5,18 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Canvas } from '@react-three/fiber'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { detectUserLanguage, translate, LANGUAGES } from '@/utils/languages'
 
 // Dynamic imports for 3D components
 const BlackHole = dynamic(() => import('@/components/3d/BlackHole'), { ssr: false })
 const HolographicEarth = dynamic(() => import('@/components/3d/HolographicEarth'), { ssr: false })
+const BlackHoleDive = dynamic(() => import('@/components/3d/BlackHoleDive'), { ssr: false })
 
-type EntryState = 'loading' | 'opening' | 'entering'
+type EntryState = 'loading' | 'opening' | 'entering' | 'diving'
 
 export default function EnterPage() {
+  const router = useRouter()
   const [state, setState] = useState<EntryState>('loading')
   const [selectedLanguage, setSelectedLanguage] = useState<string>('en')
   const [showExplainer, setShowExplainer] = useState(false)
@@ -43,8 +46,12 @@ export default function EnterPage() {
   const handleEnter = () => {
     setState('entering')
     setTimeout(() => {
-      window.location.href = '/wormhole'
+      setState('diving')
     }, 1500)
+  }
+
+  const handleDiveComplete = () => {
+    router.push('/wormhole')
   }
 
   if (state === 'loading') {
@@ -257,6 +264,57 @@ export default function EnterPage() {
               </div>
               <div className="text-gray-400">Destination: Earth...</div>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Black Hole Dive Sequence */}
+      <AnimatePresence>
+        {state === 'diving' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 z-50 bg-black"
+          >
+            <Canvas camera={{ position: [0, 0, 30], fov: 75 }}>
+              <Suspense fallback={null}>
+                <BlackHole position={[0, 0, -20]} size={5} />
+                <BlackHoleDive
+                  blackHolePosition={[0, 0, -20]}
+                  onComplete={handleDiveComplete}
+                />
+                <ambientLight intensity={0.3} />
+                <pointLight position={[20, 20, 20]} intensity={0.5} />
+              </Suspense>
+            </Canvas>
+
+            {/* Dive UI Overlay */}
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 1 }}
+                className="text-4xl md:text-6xl font-bold mb-4"
+                style={{
+                  color: '#00ffff',
+                  textShadow: '0 0 30px #00ffff, 0 0 60px #00ffff',
+                  animation: 'pulse 2s ease-in-out infinite'
+                }}
+              >
+                ENTERING SINGULARITY
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 2 }}
+                className="text-xl text-purple-400"
+                style={{
+                  textShadow: '0 0 20px #ff00ff'
+                }}
+              >
+                Crossing Event Horizon...
+              </motion.div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
