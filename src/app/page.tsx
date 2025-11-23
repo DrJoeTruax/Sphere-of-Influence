@@ -15,6 +15,10 @@ function GlowingSphere({ phase }: { phase: JourneyPhase }) {
   const groupRef = useRef<THREE.Group>(null)
   const expansionStart = useRef<number | null>(null)
 
+  useEffect(() => {
+    console.log('GlowingSphere rendering with phase:', phase)
+  }, [phase])
+
   useFrame((state) => {
     const time = state.clock.elapsedTime
 
@@ -30,6 +34,7 @@ function GlowingSphere({ phase }: { phase: JourneyPhase }) {
     if (phase === 'ENTERING') {
       if (expansionStart.current === null) {
         expansionStart.current = time
+        console.log('Starting sphere expansion')
       }
 
       const elapsed = time - expansionStart.current
@@ -46,50 +51,61 @@ function GlowingSphere({ phase }: { phase: JourneyPhase }) {
     }
   })
 
-  if (phase !== 'LANDING' && phase !== 'ENTERING') return null
+  if (phase !== 'LANDING' && phase !== 'ENTERING') {
+    console.log('GlowingSphere not rendering, phase is:', phase)
+    return null
+  }
 
   return (
     <group ref={groupRef} position={[0, 0, 0]}>
       {/* Main white/cyan glowing sphere */}
       <mesh>
-        <sphereGeometry args={[50, 32, 32]} />
-        <meshBasicMaterial
+        <sphereGeometry args={[50, 64, 64]} />
+        <meshStandardMaterial
           color="#ffffff"
-          transparent
-          opacity={0.8}
           emissive="#66ccff"
-          emissiveIntensity={0.6}
+          emissiveIntensity={1.5}
+          transparent
+          opacity={0.9}
+          roughness={0.3}
+          metalness={0.1}
         />
       </mesh>
 
-      {/* Outer cyan glow */}
+      {/* Outer cyan glow - larger, more transparent */}
       <mesh>
-        <sphereGeometry args={[60, 32, 32]} />
-        <meshBasicMaterial
+        <sphereGeometry args={[65, 32, 32]} />
+        <meshStandardMaterial
           color="#66ccff"
+          emissive="#66ccff"
+          emissiveIntensity={0.8}
           transparent
-          opacity={0.3}
+          opacity={0.2}
+          roughness={1}
+          metalness={0}
         />
       </mesh>
 
       {/* Inner blue sphere */}
       <mesh>
         <sphereGeometry args={[35, 32, 32]} />
-        <meshPhongMaterial
+        <meshStandardMaterial
           color="#1a5c9f"
           emissive="#0d3a6d"
-          shininess={50}
+          emissiveIntensity={0.5}
+          roughness={0.5}
+          metalness={0.2}
         />
       </mesh>
 
       {/* Grid overlay */}
       <mesh>
-        <sphereGeometry args={[35, 16, 16]} />
+        <sphereGeometry args={[36, 20, 20]} />
         <meshBasicMaterial
           color="#66ccff"
           wireframe
           transparent
-          opacity={0.4}
+          opacity={0.6}
         />
       </mesh>
     </group>
@@ -259,9 +275,11 @@ function LandingUI({ onMapValues }: { onMapValues: () => void }) {
   }, [])
 
   const handleButtonClick = () => {
+    console.log('Button clicked! Setting isPulling to true')
     setIsPulling(true)
     // Wait for animation to complete before starting journey
     setTimeout(() => {
+      console.log('Timeout complete, calling onMapValues')
       onMapValues()
     }, 1500)
   }
@@ -394,9 +412,16 @@ function LandingUI({ onMapValues }: { onMapValues: () => void }) {
 function CameraController({ phase, onPhaseComplete }: { phase: JourneyPhase; onPhaseComplete: (newPhase: JourneyPhase) => void }) {
   const { camera } = useThree()
   const startTime = useRef(Date.now())
+  const hasLoggedCamera = useRef(false)
 
   useFrame(() => {
     const elapsed = (Date.now() - startTime.current) / 1000
+
+    // Debug log camera position once
+    if (!hasLoggedCamera.current && phase === 'LANDING') {
+      console.log('Camera position:', camera.position.toArray(), 'Phase:', phase)
+      hasLoggedCamera.current = true
+    }
 
     switch (phase) {
       case 'LANDING':
@@ -518,11 +543,18 @@ export default function BreakthroughLanding() {
   const router = useRouter()
   const [phase, setPhase] = useState<JourneyPhase>('LANDING')
 
+  // Debug logging
+  useEffect(() => {
+    console.log('Current phase:', phase)
+  }, [phase])
+
   const handleMapValues = () => {
+    console.log('handleMapValues called, setting phase to ENTERING')
     setPhase('ENTERING')
   }
 
   const handlePhaseComplete = (newPhase: JourneyPhase) => {
+    console.log('Phase complete, moving to:', newPhase)
     setPhase(newPhase)
 
     // Navigate to hub selection when arrived
