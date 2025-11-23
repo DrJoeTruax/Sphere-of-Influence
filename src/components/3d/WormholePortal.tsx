@@ -106,10 +106,12 @@ const WormholeMaterial = shaderMaterial(
 )
 
 interface WormholePortalProps {
-  earthPosition: React.MutableRefObject<THREE.Vector3>
+  earthPosition?: React.MutableRefObject<THREE.Vector3>
+  position?: [number, number, number]
+  scale?: number
 }
 
-export default function WormholePortal({ earthPosition }: WormholePortalProps) {
+export default function WormholePortal({ earthPosition, position, scale = 1 }: WormholePortalProps) {
   const router = useRouter()
   const { raycaster, camera, gl } = useThree()
   const portalStartRef = useRef<THREE.Mesh>(null)
@@ -213,8 +215,8 @@ export default function WormholePortal({ earthPosition }: WormholePortalProps) {
       portalEndRef.current.rotation.z -= 0.02
     }
 
-    // Keep the wormhole portal connected to Earth
-    if (groupRef.current && earthPosition.current) {
+    // Keep the wormhole portal connected to Earth (if earthPosition is provided)
+    if (groupRef.current && earthPosition?.current) {
       // Position portal just beyond the Moon's orbit from Earth
       const portalX = earthPosition.current.x + PORTAL_DISTANCE
       const portalY = earthPosition.current.y
@@ -231,6 +233,10 @@ export default function WormholePortal({ earthPosition }: WormholePortalProps) {
       targetMatrix.lookAt(new THREE.Vector3(0, 0, 0), directionFromEarth, up)
       quaternion.setFromRotationMatrix(targetMatrix)
       groupRef.current.quaternion.copy(quaternion)
+    } else if (groupRef.current && position) {
+      // Use the position prop if provided (for static placement like on landing page)
+      groupRef.current.position.set(...position)
+      groupRef.current.scale.setScalar(scale)
     }
   })
 
@@ -274,11 +280,13 @@ export default function WormholePortal({ earthPosition }: WormholePortalProps) {
         ref={portalEndRef}
         position={exitPositionRef.current}
         onUpdate={(self) => {
-          // Make exit face back toward Earth
-          const dirToEarth = new THREE.Vector3()
-            .subVectors(earthPosition.current, exitPositionRef.current)
-            .normalize()
-          self.lookAt(self.position.clone().add(dirToEarth))
+          // Make exit face back toward Earth (if Earth position is provided)
+          if (earthPosition?.current) {
+            const dirToEarth = new THREE.Vector3()
+              .subVectors(earthPosition.current, exitPositionRef.current)
+              .normalize()
+            self.lookAt(self.position.clone().add(dirToEarth))
+          }
         }}
       >
         <ringGeometry args={[0.8, 1.5, 32]} />
