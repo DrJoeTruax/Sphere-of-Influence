@@ -60,44 +60,52 @@ function GlowingSphere({ phase }: { phase: JourneyPhase }) {
     <group ref={groupRef} position={[0, 0, 0]}>
       {/* Main white/cyan glowing sphere */}
       <mesh>
-        <sphereGeometry args={[50, 32, 32]} />
-        <meshBasicMaterial
+        <sphereGeometry args={[50, 64, 64]} />
+        <meshStandardMaterial
           color="#ffffff"
-          transparent
-          opacity={0.8}
           emissive="#66ccff"
-          emissiveIntensity={0.6}
+          emissiveIntensity={1.5}
+          transparent
+          opacity={0.9}
+          roughness={0.3}
+          metalness={0.1}
         />
       </mesh>
 
-      {/* Outer cyan glow */}
+      {/* Outer cyan glow - larger, more transparent */}
       <mesh>
-        <sphereGeometry args={[60, 32, 32]} />
-        <meshBasicMaterial
+        <sphereGeometry args={[65, 32, 32]} />
+        <meshStandardMaterial
           color="#66ccff"
+          emissive="#66ccff"
+          emissiveIntensity={0.8}
           transparent
-          opacity={0.3}
+          opacity={0.2}
+          roughness={1}
+          metalness={0}
         />
       </mesh>
 
       {/* Inner blue sphere */}
       <mesh>
         <sphereGeometry args={[35, 32, 32]} />
-        <meshPhongMaterial
+        <meshStandardMaterial
           color="#1a5c9f"
           emissive="#0d3a6d"
-          shininess={50}
+          emissiveIntensity={0.5}
+          roughness={0.5}
+          metalness={0.2}
         />
       </mesh>
 
       {/* Grid overlay */}
       <mesh>
-        <sphereGeometry args={[35, 16, 16]} />
+        <sphereGeometry args={[36, 20, 20]} />
         <meshBasicMaterial
           color="#66ccff"
           wireframe
           transparent
-          opacity={0.4}
+          opacity={0.6}
         />
       </mesh>
     </group>
@@ -267,9 +275,11 @@ function LandingUI({ onMapValues }: { onMapValues: () => void }) {
   }, [])
 
   const handleButtonClick = () => {
+    console.log('Button clicked! Setting isPulling to true')
     setIsPulling(true)
     // Wait for animation to complete before starting journey
     setTimeout(() => {
+      console.log('Timeout complete, calling onMapValues')
       onMapValues()
     }, 1500)
   }
