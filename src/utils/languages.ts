@@ -75,10 +75,10 @@ export interface Translation {
 
 export const TRANSLATIONS: Translation = {
   en: {
-    heroTitle: 'Breakthrough',
-    heroSubtitle: 'A global coordination platform for AGI development',
-    heroDescription: 'Join 7 billion people in building artificial general intelligence that respects human autonomy.',
-    enterPlatform: 'Enter the Platform',
+    heroTitle: '12 of us. 8 billion voices. One choice.',
+    heroSubtitle: 'Map your values. Shape AGI.',
+    heroDescription: 'You\'re not watching. You\'re deciding. Thousands of people like you are mapping what matters. That shapes how AI learns to care.',
+    enterPlatform: 'Map Your Values',
     whyMatters: 'Why This Matters',
     builtOn7Laws: 'Built on 7 Immutable Laws',
     regionalHubs: 'Regional Hubs',

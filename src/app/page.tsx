@@ -10,9 +10,10 @@ import { use3DTilt } from '@/hooks/use3DTilt'
 import { detectUserLanguage, translate, LANGUAGES } from '@/utils/languages'
 
 // Dynamic imports for 3D components
-const BlackHole = dynamic(() => import('@/components/3d/BlackHole'), { ssr: false })
+const NeuralNetwork = dynamic(() => import('@/components/3d/NeuralNetwork'), { ssr: false })
 const GravitationalText = dynamic(() => import('@/components/3d/GravitationalText'), { ssr: false })
 const HolographicEarth = dynamic(() => import('@/components/3d/HolographicEarth'), { ssr: false })
+const WormholePortal = dynamic(() => import('@/components/3d/WormholePortal'), { ssr: false })
 
 // Law Card Component with 3D tilt
 function LawCard({ law, index }: { law: { name: string; desc: string }; index: number }) {
@@ -113,11 +114,12 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-black text-white relative overflow-x-hidden">
-      {/* Fixed 3D Black Hole Background */}
+      {/* Fixed 3D Neural Network Background */}
       <div className="fixed inset-0 z-0">
         <Canvas camera={{ position: [0, 0, 30], fov: 75 }}>
           <Suspense fallback={null}>
-            <BlackHole position={[0, 0, -20]} size={5} />
+            <NeuralNetwork position={[0, 0, -20]} size={10} nodeCount={150} />
+            <WormholePortal position={[0, 5, -40]} scale={0.8} />
             <ambientLight intensity={0.3} />
             <pointLight position={[20, 20, 20]} intensity={0.5} />
           </Suspense>
@@ -196,10 +198,10 @@ export default function Home() {
             <Suspense fallback={null}>
               <GravitationalText
                 position={[0, 3, 0]}
-                fontSize={4.5}
+                fontSize={2.5}
                 color="#ffffff"
                 blackHolePosition={[0, 0, -20]}
-                blackHoleMass={150}
+                blackHoleMass={50}
               >
                 {translate('heroTitle', lang)}
               </GravitationalText>
