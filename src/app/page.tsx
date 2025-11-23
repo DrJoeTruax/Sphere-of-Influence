@@ -15,6 +15,10 @@ function GlowingSphere({ phase }: { phase: JourneyPhase }) {
   const groupRef = useRef<THREE.Group>(null)
   const expansionStart = useRef<number | null>(null)
 
+  useEffect(() => {
+    console.log('GlowingSphere rendering with phase:', phase)
+  }, [phase])
+
   useFrame((state) => {
     const time = state.clock.elapsedTime
 
@@ -30,6 +34,7 @@ function GlowingSphere({ phase }: { phase: JourneyPhase }) {
     if (phase === 'ENTERING') {
       if (expansionStart.current === null) {
         expansionStart.current = time
+        console.log('Starting sphere expansion')
       }
 
       const elapsed = time - expansionStart.current
@@ -46,7 +51,10 @@ function GlowingSphere({ phase }: { phase: JourneyPhase }) {
     }
   })
 
-  if (phase !== 'LANDING' && phase !== 'ENTERING') return null
+  if (phase !== 'LANDING' && phase !== 'ENTERING') {
+    console.log('GlowingSphere not rendering, phase is:', phase)
+    return null
+  }
 
   return (
     <group ref={groupRef} position={[0, 0, 0]}>
@@ -394,9 +402,16 @@ function LandingUI({ onMapValues }: { onMapValues: () => void }) {
 function CameraController({ phase, onPhaseComplete }: { phase: JourneyPhase; onPhaseComplete: (newPhase: JourneyPhase) => void }) {
   const { camera } = useThree()
   const startTime = useRef(Date.now())
+  const hasLoggedCamera = useRef(false)
 
   useFrame(() => {
     const elapsed = (Date.now() - startTime.current) / 1000
+
+    // Debug log camera position once
+    if (!hasLoggedCamera.current && phase === 'LANDING') {
+      console.log('Camera position:', camera.position.toArray(), 'Phase:', phase)
+      hasLoggedCamera.current = true
+    }
 
     switch (phase) {
       case 'LANDING':
@@ -518,11 +533,18 @@ export default function BreakthroughLanding() {
   const router = useRouter()
   const [phase, setPhase] = useState<JourneyPhase>('LANDING')
 
+  // Debug logging
+  useEffect(() => {
+    console.log('Current phase:', phase)
+  }, [phase])
+
   const handleMapValues = () => {
+    console.log('handleMapValues called, setting phase to ENTERING')
     setPhase('ENTERING')
   }
 
   const handlePhaseComplete = (newPhase: JourneyPhase) => {
+    console.log('Phase complete, moving to:', newPhase)
     setPhase(newPhase)
 
     // Navigate to hub selection when arrived
