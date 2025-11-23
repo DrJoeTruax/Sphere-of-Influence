@@ -1,44 +1,269 @@
 'use client'
 
-import { Suspense, useState, useEffect, useRef, useMemo } from 'react'
+import { Suspense, useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useRouter } from 'next/navigation'
 import * as THREE from 'three'
-import EarthScene, { type SceneState } from '@/components/3d/EarthScene'
+import EarthScene from '@/components/3d/EarthScene'
 import { detectUserLanguage, translate, LANGUAGES } from '@/utils/languages'
 
-type JourneyPhase = 'LANDING' | 'WORMHOLE_SPAWN' | 'TEXT_PULL' | 'TRAVERSING' | 'HOPE_OVERLAY' | 'APPROACHING' | 'ARRIVED'
+type JourneyPhase = 'LANDING' | 'ENTERING' | 'TRAVERSING' | 'HOPE' | 'APPROACHING' | 'ARRIVED'
 
-// Foreground Landing Page Elements
-function ForegroundLandingPage({ phase, onButtonClick }: { phase: JourneyPhase; onButtonClick: () => void }) {
+// Main Glowing Sphere (Neural Network representation)
+function GlowingSphere({ phase }: { phase: JourneyPhase }) {
+  const groupRef = useRef<THREE.Group>(null)
+  const expansionStart = useRef<number | null>(null)
+
+  useFrame((state) => {
+    const time = state.clock.elapsedTime
+
+    if (!groupRef.current) return
+
+    // Gentle rotation during landing
+    if (phase === 'LANDING') {
+      groupRef.current.rotation.y += 0.0008
+      groupRef.current.rotation.x += 0.0003
+    }
+
+    // Expand during entering phase
+    if (phase === 'ENTERING') {
+      if (expansionStart.current === null) {
+        expansionStart.current = time
+      }
+
+      const elapsed = time - expansionStart.current
+      const expansionProgress = Math.min(elapsed / 2, 1) // 2 second expansion
+      const eased = 1 - Math.pow(1 - expansionProgress, 3)
+
+      // Expand from normal size to 3x size
+      const scale = 1 + eased * 2
+      groupRef.current.scale.setScalar(scale)
+
+      // Increase rotation speed
+      groupRef.current.rotation.y += 0.002 * (1 + eased * 2)
+      groupRef.current.rotation.x += 0.001 * (1 + eased * 2)
+    }
+  })
+
+  if (phase !== 'LANDING' && phase !== 'ENTERING') return null
+
+  return (
+    <group ref={groupRef} position={[0, 0, 0]}>
+      {/* Main white/cyan glowing sphere */}
+      <mesh>
+        <sphereGeometry args={[50, 32, 32]} />
+        <meshBasicMaterial
+          color="#ffffff"
+          transparent
+          opacity={0.8}
+          emissive="#66ccff"
+          emissiveIntensity={0.6}
+        />
+      </mesh>
+
+      {/* Outer cyan glow */}
+      <mesh>
+        <sphereGeometry args={[60, 32, 32]} />
+        <meshBasicMaterial
+          color="#66ccff"
+          transparent
+          opacity={0.3}
+        />
+      </mesh>
+
+      {/* Inner blue sphere */}
+      <mesh>
+        <sphereGeometry args={[35, 32, 32]} />
+        <meshPhongMaterial
+          color="#1a5c9f"
+          emissive="#0d3a6d"
+          shininess={50}
+        />
+      </mesh>
+
+      {/* Grid overlay */}
+      <mesh>
+        <sphereGeometry args={[35, 16, 16]} />
+        <meshBasicMaterial
+          color="#66ccff"
+          wireframe
+          transparent
+          opacity={0.4}
+        />
+      </mesh>
+    </group>
+  )
+}
+
+// Wormhole with particles (mid-distance)
+function WormholeWithParticles({ phase }: { phase: JourneyPhase }) {
+  const groupRef = useRef<THREE.Group>(null)
+  const particlesRef = useRef<THREE.Points>(null)
+
+  // Generate wormhole particles
+  const { positions, colors } = React.useMemo(() => {
+    const particleCount = 5000
+    const positions = new Float32Array(particleCount * 3)
+    const colors = new Float32Array(particleCount * 3)
+
+    for (let i = 0; i < particleCount; i++) {
+      const angle = Math.random() * Math.PI * 2
+      const radiusVariation = Math.random()
+      const diskRadiusInner = 5
+      const diskRadiusOuter = 25
+      const particleRadius = diskRadiusInner + (diskRadiusOuter - diskRadiusInner) * radiusVariation
+      const zOffset = (Math.random() - 0.5) * 25
+      const depthOffset = Math.random() * 150
+
+      positions[i * 3] = Math.cos(angle) * particleRadius
+      positions[i * 3 + 1] = zOffset
+      positions[i * 3 + 2] = Math.sin(angle) * particleRadius - depthOffset
+
+      // Heat coloring
+      const heatFactor = 1 - radiusVariation * 0.6
+      let hue
+      if (heatFactor > 0.7) hue = 0.08
+      else if (heatFactor > 0.4) hue = 0.05
+      else hue = 0
+
+      const col = new THREE.Color().setHSL(hue, 1, Math.min(1, heatFactor * 1.5))
+      colors[i * 3] = col.r
+      colors[i * 3 + 1] = col.g
+      colors[i * 3 + 2] = col.b
+    }
+
+    return { positions, colors }
+  }, [])
+
+  useFrame(() => {
+    if (groupRef.current) {
+      groupRef.current.rotation.z += 0.01
+    }
+  })
+
+  return (
+    <group ref={groupRef} position={[-120, 30, -200]}>
+      {/* Wormhole particles */}
+      <points ref={particlesRef}>
+        <bufferGeometry>
+          <bufferAttribute
+            attach="attributes-position"
+            count={5000}
+            array={positions}
+            itemSize={3}
+          />
+          <bufferAttribute
+            attach="attributes-color"
+            count={5000}
+            array={colors}
+            itemSize={3}
+          />
+        </bufferGeometry>
+        <pointsMaterial
+          size={0.6}
+          vertexColors
+          transparent
+          opacity={0.85}
+        />
+      </points>
+
+      {/* Photon sphere (blue glow) */}
+      <mesh>
+        <sphereGeometry args={[8, 16, 16]} />
+        <meshBasicMaterial
+          color="#6699ff"
+          transparent
+          opacity={0.5}
+          emissive="#3366ff"
+        />
+      </mesh>
+
+      {/* Event horizon (black center) */}
+      <mesh>
+        <sphereGeometry args={[5, 16, 16]} />
+        <meshBasicMaterial color="#000000" />
+      </mesh>
+    </group>
+  )
+}
+
+// Connection tunnel (curved cyan line)
+function ConnectionTunnel() {
+  const tunnelPoints = [
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(-60, 15, -100),
+    new THREE.Vector3(-120, 30, -200), // Wormhole
+    new THREE.Vector3(-200, 60, -300),
+    new THREE.Vector3(-350, 100, -400), // Solar system
+  ]
+
+  const curve = React.useMemo(() => new THREE.CatmullRomCurve3(tunnelPoints), [])
+  const points = React.useMemo(() => curve.getPoints(150), [curve])
+
+  return (
+    <line>
+      <bufferGeometry>
+        <bufferAttribute
+          attach="attributes-position"
+          count={points.length}
+          array={new Float32Array(points.flatMap(p => [p.x, p.y, p.z]))}
+          itemSize={3}
+        />
+      </bufferGeometry>
+      <lineBasicMaterial
+        color="#66ccff"
+        transparent
+        opacity={0.6}
+      />
+    </line>
+  )
+}
+
+// Background stars
+function BackgroundStars() {
+  const positions = React.useMemo(() => {
+    const pos = new Float32Array(1000 * 3)
+    for (let i = 0; i < 1000 * 3; i += 3) {
+      pos[i] = (Math.random() - 0.5) * 2000
+      pos[i + 1] = (Math.random() - 0.5) * 2000
+      pos[i + 2] = (Math.random() - 0.5) * 2000
+    }
+    return pos
+  }, [])
+
+  return (
+    <points>
+      <bufferGeometry>
+        <bufferAttribute
+          attach="attributes-position"
+          count={1000}
+          array={positions}
+          itemSize={3}
+        />
+      </bufferGeometry>
+      <pointsMaterial color="#ffffff" size={1.5} />
+    </points>
+  )
+}
+
+// Landing Page UI
+function LandingUI({ onMapValues }: { onMapValues: () => void }) {
   const [lang, setLang] = useState('en')
   const [showLanguageSelector, setShowLanguageSelector] = useState(false)
-  const textRefs = useRef<(HTMLElement | null)[]>([])
+  const [isPulling, setIsPulling] = useState(false)
 
   useEffect(() => {
-    // Auto-detect keyboard/system language
     const detectedLang = detectUserLanguage()
     setLang(detectedLang)
   }, [])
 
-  // Text pull effect when wormhole spawns
-  useEffect(() => {
-    if (phase === 'TEXT_PULL') {
-      textRefs.current.forEach((el, index) => {
-        if (el) {
-          // Animate each text element toward center
-          setTimeout(() => {
-            el.style.transform = 'translate(-50%, -50%) scale(0.1)'
-            el.style.opacity = '0'
-          }, index * 100)
-        }
-      })
-    }
-  }, [phase])
-
-  if (phase !== 'LANDING' && phase !== 'WORMHOLE_SPAWN' && phase !== 'TEXT_PULL') {
-    return null
+  const handleButtonClick = () => {
+    setIsPulling(true)
+    // Wait for animation to complete before starting journey
+    setTimeout(() => {
+      onMapValues()
+    }, 1500)
   }
 
   return (
@@ -48,12 +273,12 @@ function ForegroundLandingPage({ phase, onButtonClick }: { phase: JourneyPhase; 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         onClick={() => setShowLanguageSelector(!showLanguageSelector)}
-        className="fixed top-4 right-4 z-50 px-4 py-2 bg-gray-900/80 backdrop-blur-xl border border-gray-700 rounded-lg hover:border-blue-500/50 transition-all"
+        className="fixed top-4 right-4 z-50 px-4 py-2 bg-blue-500/20 backdrop-blur-xl border border-blue-500/50 rounded text-blue-300 hover:bg-blue-500/30 transition-all"
       >
         🌍 {LANGUAGES.find(l => l.code === lang)?.nativeName || 'English'}
       </motion.button>
 
-      {/* Language Selector Modal */}
+      {/* Language Modal */}
       <AnimatePresence>
         {showLanguageSelector && (
           <motion.div
@@ -64,9 +289,9 @@ function ForegroundLandingPage({ phase, onButtonClick }: { phase: JourneyPhase; 
             onClick={() => setShowLanguageSelector(false)}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
               onClick={(e) => e.stopPropagation()}
               className="bg-gray-900/90 backdrop-blur-xl rounded-2xl p-8 max-w-4xl w-full border border-gray-800/50 max-h-[80vh] overflow-y-auto"
             >
@@ -90,7 +315,6 @@ function ForegroundLandingPage({ phase, onButtonClick }: { phase: JourneyPhase; 
                   >
                     <div className="font-semibold">{language.nativeName}</div>
                     <div className="text-xs text-gray-400 mt-1">{language.name}</div>
-                    <div className="text-xs text-gray-500">{language.region}</div>
                   </button>
                 ))}
               </div>
@@ -99,63 +323,168 @@ function ForegroundLandingPage({ phase, onButtonClick }: { phase: JourneyPhase; 
         )}
       </AnimatePresence>
 
-      {/* Landing Content */}
-      <motion.section
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="relative flex flex-col items-center justify-center min-h-screen px-4 text-center z-10"
-      >
+      {/* Main Content */}
+      <div className="flex flex-col items-center justify-center min-h-screen px-4 text-center pointer-events-none">
         <motion.h1
-          ref={(el) => { textRefs.current[0] = el }}
           initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.3 }}
-          className="text-4xl md:text-6xl font-bold mb-6 max-w-4xl transition-all duration-1000 ease-out"
+          animate={{
+            opacity: isPulling ? 0 : 1,
+            y: isPulling ? -100 : 0,
+            scale: isPulling ? 0.1 : 1
+          }}
+          transition={{ duration: isPulling ? 1 : 0.8, delay: isPulling ? 0 : 0.3 }}
+          className="text-5xl md:text-6xl font-light tracking-wide mb-5 drop-shadow-[0_0_30px_rgba(102,153,255,0.5)]"
         >
           {translate('heroTitle', lang)}
         </motion.h1>
 
-        <motion.p
-          ref={(el) => { textRefs.current[1] = el }}
+        <motion.h2
           initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.5 }}
-          className="text-2xl md:text-3xl mb-4 max-w-3xl font-light transition-all duration-1000 ease-out"
+          animate={{
+            opacity: isPulling ? 0 : 1,
+            y: isPulling ? -80 : 0,
+            scale: isPulling ? 0.1 : 1
+          }}
+          transition={{ duration: isPulling ? 1 : 0.8, delay: isPulling ? 0.1 : 0.5 }}
+          className="text-2xl md:text-3xl font-light tracking-wide mb-5 text-gray-300"
         >
           {translate('heroSubtitle', lang)}
-        </motion.p>
+        </motion.h2>
 
         <motion.p
-          ref={(el) => { textRefs.current[2] = el }}
           initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.7 }}
-          className="text-gray-400 mb-12 max-w-xl text-lg transition-all duration-1000 ease-out"
+          animate={{
+            opacity: isPulling ? 0 : 1,
+            y: isPulling ? -60 : 0,
+            scale: isPulling ? 0.1 : 1
+          }}
+          transition={{ duration: isPulling ? 1 : 0.8, delay: isPulling ? 0.2 : 0.7 }}
+          className="text-base md:text-lg leading-relaxed text-gray-400 mb-10 max-w-xl"
         >
           {translate('heroDescription', lang)}
         </motion.p>
 
-        <motion.button
-          ref={(el) => { textRefs.current[3] = el as any }}
+        <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6, delay: 0.9 }}
-          onClick={onButtonClick}
-          disabled={phase !== 'LANDING'}
-          className="group relative px-12 py-6 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-lg text-xl font-semibold transition-all duration-300 overflow-hidden shadow-2xl hover:shadow-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+          animate={{
+            opacity: isPulling ? 0 : 1,
+            scale: isPulling ? 0.1 : 1,
+            y: isPulling ? -40 : 0
+          }}
+          transition={{ duration: isPulling ? 1 : 0.6, delay: isPulling ? 0.3 : 0.9 }}
+          className="flex gap-5 pointer-events-auto"
         >
-          <span className="relative z-10">{translate('enterPlatform', lang)}</span>
-          <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-        </motion.button>
-      </motion.section>
+          <button
+            onClick={handleButtonClick}
+            disabled={isPulling}
+            className="px-10 py-3.5 text-sm font-semibold tracking-wider uppercase bg-gradient-to-br from-blue-600 to-blue-800 text-white rounded shadow-[0_0_20px_rgba(0,102,255,0.4)] hover:shadow-[0_0_30px_rgba(0,102,255,0.7)] hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {translate('enterPlatform', lang)}
+          </button>
+          <button className="px-10 py-3.5 text-sm font-semibold tracking-wider uppercase bg-blue-500/10 text-blue-300 border border-blue-500/50 rounded backdrop-blur-xl hover:bg-blue-500/20 hover:border-blue-500/80 transition-all">
+            Why This Matters
+          </button>
+        </motion.div>
+      </div>
     </>
   )
 }
 
-// Wormhole Traversal Overlay
-function TraversalOverlay({ phase }: { phase: JourneyPhase }) {
-  if (phase !== 'HOPE_OVERLAY') return null
+// Camera controller for complete journey
+function CameraController({ phase, onPhaseComplete }: { phase: JourneyPhase; onPhaseComplete: (newPhase: JourneyPhase) => void }) {
+  const { camera } = useThree()
+  const startTime = useRef(Date.now())
 
+  useFrame(() => {
+    const elapsed = (Date.now() - startTime.current) / 1000
+
+    switch (phase) {
+      case 'LANDING':
+        // Static position showing glowing sphere foreground + distant solar system
+        camera.position.set(0, 0, 100)
+        camera.lookAt(0, 0, 0)
+        break
+
+      case 'ENTERING':
+        // Move toward glowing sphere (2 seconds)
+        const t1 = Math.min(elapsed / 2, 1)
+        const eased1 = 1 - Math.pow(1 - t1, 3)
+        camera.position.z = 100 - eased1 * 20 // Move from 100 to 80
+        camera.lookAt(0, 0, 0)
+
+        if (elapsed > 2) {
+          startTime.current = Date.now()
+          onPhaseComplete('TRAVERSING')
+        }
+        break
+
+      case 'TRAVERSING':
+        // Fly through tunnel toward wormhole (5 seconds)
+        const t2 = Math.min(elapsed / 5, 1)
+        const eased2 = 1 - Math.pow(1 - t2, 3)
+        // Move from (0, 0, 80) toward wormhole at (-120, 30, -200)
+        camera.position.x = -120 * eased2
+        camera.position.y = 30 * eased2
+        camera.position.z = 80 - 280 * eased2 // Move to -200
+        camera.lookAt(-120, 30, -200)
+
+        if (elapsed > 2.5 && elapsed < 3.5) {
+          // Show HOPE overlay mid-journey
+          onPhaseComplete('HOPE')
+        } else if (elapsed > 5) {
+          startTime.current = Date.now()
+          onPhaseComplete('APPROACHING')
+        }
+        break
+
+      case 'HOPE':
+        // Continue traversing while showing HOPE overlay
+        const t3 = Math.min(elapsed / 5, 1)
+        const eased3 = 1 - Math.pow(1 - t3, 3)
+        camera.position.x = -120 * eased3
+        camera.position.y = 30 * eased3
+        camera.position.z = 80 - 280 * eased3
+        camera.lookAt(-120, 30, -200)
+
+        if (elapsed > 5) {
+          startTime.current = Date.now()
+          onPhaseComplete('APPROACHING')
+        }
+        break
+
+      case 'APPROACHING':
+        // Enter wormhole and approach solar system (6 seconds)
+        const t4 = Math.min(elapsed / 6, 1)
+        const eased4 = 1 - Math.pow(1 - t4, 3)
+        // Move from wormhole (-120, 30, -200) to near solar system (-350, 100, -420)
+        camera.position.x = -120 + (-230) * eased4
+        camera.position.y = 30 + 70 * eased4
+        camera.position.z = -200 + (-220) * eased4
+        camera.lookAt(-350, 100, -400)
+
+        if (elapsed > 6) {
+          startTime.current = Date.now()
+          onPhaseComplete('ARRIVED')
+        }
+        break
+
+      case 'ARRIVED':
+        // Orbit around Earth in solar system
+        const orbitTime = Date.now() / 8000
+        const radius = 800 // Large orbit around solar system group
+        camera.position.x = -350 + Math.sin(orbitTime) * radius
+        camera.position.z = -400 + Math.cos(orbitTime) * radius
+        camera.position.y = 100 + Math.sin(orbitTime * 0.5) * 200
+        camera.lookAt(-350, 100, -400)
+        break
+    }
+  })
+
+  return null
+}
+
+// HOPE Overlay during traversal
+function HopeOverlay() {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -185,295 +514,60 @@ function TraversalOverlay({ phase }: { phase: JourneyPhase }) {
   )
 }
 
-// Foreground Neural Constellation
-function ForegroundNeuralConstellation({ phase }: { phase: JourneyPhase }) {
-  const meshRef = useRef<THREE.Points>(null)
-  const groupRef = useRef<THREE.Group>(null)
-
-  const nodeCount = 150
-  const size = 80 // Large constellation in foreground
-
-  // Generate nodes
-  const { positions, scales, phases } = useMemo(() => {
-    const positions = new Float32Array(nodeCount * 3)
-    const scales = new Float32Array(nodeCount)
-    const phases = new Float32Array(nodeCount)
-
-    for (let i = 0; i < nodeCount; i++) {
-      const theta = Math.random() * Math.PI * 2
-      const phi = Math.acos(2 * Math.random() - 1)
-      const radius = size * (0.5 + Math.random() * 0.5)
-
-      positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta)
-      positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta)
-      positions[i * 3 + 2] = radius * Math.cos(phi)
-
-      scales[i] = 0.5 + Math.random() * 1.5
-      phases[i] = Math.random() * Math.PI * 2
-    }
-
-    return { positions, scales, phases }
-  }, [])
-
-  const nodeShader = useMemo(
-    () => ({
-      uniforms: {
-        time: { value: 0 },
-      },
-      vertexShader: `
-        uniform float time;
-        attribute float scale;
-        attribute float phase;
-        varying vec3 vColor;
-
-        void main() {
-          float pulse = sin(time * 2.0 + phase) * 0.5 + 0.5;
-          float finalScale = scale * (0.8 + pulse * 0.4);
-
-          float colorMix = sin(phase + time * 0.5) * 0.5 + 0.5;
-          vec3 col1 = vec3(0.0, 0.83, 1.0); // Cyan
-          vec3 col2 = vec3(1.0, 0.0, 1.0); // Magenta
-          vec3 col3 = vec3(1.0, 0.67, 0.0); // Orange
-
-          vColor = mix(mix(col1, col2, colorMix), col3, pulse * 0.3);
-
-          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-          gl_PointSize = finalScale * 8.0 * (300.0 / -mvPosition.z);
-          gl_Position = projectionMatrix * mvPosition;
-        }
-      `,
-      fragmentShader: `
-        varying vec3 vColor;
-
-        void main() {
-          vec2 center = gl_PointCoord - vec2(0.5);
-          float dist = length(center);
-
-          if (dist > 0.5) discard;
-
-          float alpha = 1.0 - smoothstep(0.2, 0.5, dist);
-          float glow = 1.0 - smoothstep(0.0, 0.5, dist);
-
-          vec3 finalColor = vColor * (0.5 + glow * 0.5);
-          gl_FragColor = vec4(finalColor, alpha * 0.8);
-        }
-      `,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false
-    }),
-    []
-  )
-
-  useFrame((state) => {
-    const time = state.clock.elapsedTime
-
-    if (meshRef.current) {
-      const material = meshRef.current.material as THREE.ShaderMaterial
-      material.uniforms.time.value = time
-    }
-
-    // Gentle rotation
-    if (groupRef.current && phase === 'LANDING') {
-      groupRef.current.rotation.y = time * 0.05
-      groupRef.current.rotation.x = Math.sin(time * 0.1) * 0.1
-    }
-
-    // Expand and fade when transitioning
-    if (phase === 'WORMHOLE_SPAWN' || phase === 'TEXT_PULL') {
-      if (groupRef.current) {
-        const expandScale = 1 + (time - state.clock.elapsedTime + 0.5) * 0.5
-        groupRef.current.scale.setScalar(Math.min(expandScale, 3))
-      }
-      if (meshRef.current) {
-        const material = meshRef.current.material as THREE.ShaderMaterial
-        const fade = Math.max(0, 1 - (time - state.clock.elapsedTime + 0.5))
-        material.opacity = fade
-      }
-    }
-  })
-
-  if (phase !== 'LANDING' && phase !== 'WORMHOLE_SPAWN' && phase !== 'TEXT_PULL') {
-    return null
-  }
-
-  return (
-    <group ref={groupRef} position={[0, 0, 100]}>
-      <points ref={meshRef}>
-        <bufferGeometry>
-          <bufferAttribute
-            attach="attributes-position"
-            count={nodeCount}
-            array={positions}
-            itemSize={3}
-          />
-          <bufferAttribute
-            attach="attributes-scale"
-            count={nodeCount}
-            array={scales}
-            itemSize={1}
-          />
-          <bufferAttribute
-            attach="attributes-phase"
-            count={nodeCount}
-            array={phases}
-            itemSize={1}
-          />
-        </bufferGeometry>
-        <shaderMaterial attach="material" {...nodeShader} />
-      </points>
-
-      {/* Connection lines between nodes */}
-      {/* Add connection lines here if needed */}
-    </group>
-  )
-}
-
-// Camera Controller for Complete Journey
-function JourneyCameraController({ phase, onPhaseComplete }: { phase: JourneyPhase; onPhaseComplete: (newPhase: JourneyPhase) => void }) {
-  const { camera } = useThree()
-  const startTime = useRef(Date.now())
-
-  useFrame(() => {
-    const elapsed = (Date.now() - startTime.current) / 1000
-
-    switch (phase) {
-      case 'LANDING':
-        // Static position showing foreground + DISTANT solar system
-        camera.position.set(0, 200, 500)
-        camera.lookAt(0, 0, -20000) // Look toward distant solar system
-        break
-
-      case 'WORMHOLE_SPAWN':
-        // Hold for 1 second while wormhole appears
-        if (elapsed > 1) {
-          startTime.current = Date.now()
-          onPhaseComplete('TEXT_PULL')
-        }
-        break
-
-      case 'TEXT_PULL':
-        // Hold for 2 seconds while text gets sucked in
-        if (elapsed > 2) {
-          startTime.current = Date.now()
-          onPhaseComplete('TRAVERSING')
-        }
-        break
-
-      case 'TRAVERSING':
-        // Fly TOWARD the solar system and wormhole (8 seconds)
-        const t1 = Math.min(elapsed / 8, 1)
-        const eased1 = 1 - Math.pow(1 - t1, 3)
-
-        // Move from foreground (500) all the way to wormhole entrance (-19500)
-        camera.position.z = 500 - eased1 * 20000 // From 500 to -19500
-        camera.position.y = 200 - eased1 * 190 // Lower down to 10
-        camera.lookAt(0, 0, -20000)
-
-        if (t1 >= 0.3 && t1 < 0.5) {
-          // Show hope overlay mid-journey
-          onPhaseComplete('HOPE_OVERLAY')
-        } else if (elapsed > 8) {
-          startTime.current = Date.now()
-          onPhaseComplete('APPROACHING')
-        }
-        break
-
-      case 'HOPE_OVERLAY':
-        // Continue traversing while showing overlay
-        const t2 = Math.min(elapsed / 8, 1)
-        const eased2 = 1 - Math.pow(1 - t2, 3)
-        camera.position.z = 500 - eased2 * 20000
-        camera.position.y = 200 - eased2 * 190
-        camera.lookAt(0, 0, -20000)
-
-        if (elapsed > 8) {
-          startTime.current = Date.now()
-          onPhaseComplete('APPROACHING')
-        }
-        break
-
-      case 'APPROACHING':
-        // Enter the wormhole and emerge at Earth (5 seconds)
-        const t3 = Math.min(elapsed / 5, 1)
-        const eased3 = 1 - Math.pow(1 - t3, 3)
-
-        // Enter wormhole tunnel, then emerge at Earth
-        if (t3 < 0.5) {
-          // First half: Enter wormhole (spiraling in)
-          const spiralT = t3 * 2
-          const spiralAngle = spiralT * Math.PI * 4
-          const spiralRadius = 100 * (1 - spiralT)
-          camera.position.x = Math.cos(spiralAngle) * spiralRadius
-          camera.position.y = 10 + Math.sin(spiralAngle) * spiralRadius * 0.5
-          camera.position.z = -19500 - spiralT * 500
-          camera.lookAt(0, 0, -20000)
-        } else {
-          // Second half: Emerge at Earth orbit
-          const emergeT = (t3 - 0.5) * 2
-          camera.position.z = -20000 + emergeT * 19995 // Emerge to z: -5
-          camera.position.y = 10
-          camera.position.x = 0
-          camera.lookAt(0, 0, 0)
-        }
-
-        if (elapsed > 5) {
-          onPhaseComplete('ARRIVED')
-        }
-        break
-
-      case 'ARRIVED':
-        // Orbit Earth
-        const orbitTime = Date.now() / 10000
-        const radius = 15
-        camera.position.x = Math.sin(orbitTime) * radius
-        camera.position.z = Math.cos(orbitTime) * radius - 5
-        camera.position.y = 5
-        camera.lookAt(0, 0, 0)
-        break
-    }
-  })
-
-  return null
-}
-
-export default function BreakthroughLandingPage() {
+export default function BreakthroughLanding() {
   const router = useRouter()
   const [phase, setPhase] = useState<JourneyPhase>('LANDING')
 
-  const handleButtonClick = () => {
-    setPhase('WORMHOLE_SPAWN')
+  const handleMapValues = () => {
+    setPhase('ENTERING')
   }
 
   const handlePhaseComplete = (newPhase: JourneyPhase) => {
     setPhase(newPhase)
-  }
 
-  const handleHubSelect = (hubId: string) => {
-    router.push(`/hub/${hubId}/role`)
+    // Navigate to hub selection when arrived
+    if (newPhase === 'ARRIVED') {
+      setTimeout(() => {
+        router.push('/hub')
+      }, 3000)
+    }
   }
 
   return (
     <main className="min-h-screen bg-black text-white relative overflow-hidden">
-      {/* Single Continuous R3F Scene */}
+      {/* 3D Scene */}
       <div className="fixed inset-0 z-0">
-        <Canvas camera={{ fov: 60, near: 0.1, far: 50000 }} dpr={[1, 1.5]}>
+        <Canvas camera={{ fov: 75, near: 0.1, far: 10000 }}>
           <Suspense fallback={null}>
-            {/* Journey Camera Controller */}
-            <JourneyCameraController phase={phase} onPhaseComplete={handlePhaseComplete} />
+            <CameraController phase={phase} onPhaseComplete={handlePhaseComplete} />
 
-            {/* Foreground Neural Constellation */}
-            <ForegroundNeuralConstellation phase={phase} />
+            {/* Lighting */}
+            <ambientLight intensity={0.5} />
+            <pointLight position={[50, 50, 100]} intensity={2} color="#6699ff" />
 
-            {/* Solar System (WAYYYY FAR in background, 12x scale) */}
-            <group position={[0, 0, -20000]} scale={12}>
+            {/* Background stars */}
+            <BackgroundStars />
+
+            {/* Main glowing sphere (foreground) - visible during landing and entering */}
+            {(phase === 'LANDING' || phase === 'ENTERING') && (
+              <GlowingSphere phase={phase} />
+            )}
+
+            {/* Wormhole (mid-distance) - always visible */}
+            <WormholeWithParticles phase={phase} />
+
+            {/* Connection tunnel - always visible */}
+            <ConnectionTunnel />
+
+            {/* Solar System (tiny, far background) - always there */}
+            <group position={[-350, 100, -400]} scale={0.05}>
               <EarthScene
                 onCameraAnimationComplete={() => {}}
                 showEarthDetails={phase === 'ARRIVED'}
-                onHubSelect={handleHubSelect}
+                onHubSelect={(hubId) => router.push(`/hub/${hubId}/role`)}
                 cycleIndex={0}
-                autoZoom={false}
-                sceneState="HUB_SELECTION"
+                autoZoom={phase === 'ARRIVED'}
+                sceneState={phase === 'ARRIVED' ? 'HUB_SELECTION' : 'LANDING'}
               />
             </group>
           </Suspense>
@@ -481,8 +575,11 @@ export default function BreakthroughLandingPage() {
       </div>
 
       {/* UI Overlays */}
-      <ForegroundLandingPage phase={phase} onButtonClick={handleButtonClick} />
-      <TraversalOverlay phase={phase} />
+      {phase === 'LANDING' && <LandingUI onMapValues={handleMapValues} />}
+
+      <AnimatePresence>
+        {phase === 'HOPE' && <HopeOverlay />}
+      </AnimatePresence>
     </main>
   )
 }
