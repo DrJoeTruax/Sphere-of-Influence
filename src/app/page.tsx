@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState, useEffect, useRef } from 'react'
+import { Suspense, useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useRouter } from 'next/navigation'
@@ -102,7 +102,7 @@ function WormholeWithParticles({ phase }: { phase: JourneyPhase }) {
   const particlesRef = useRef<THREE.Points>(null)
 
   // Generate wormhole particles
-  const { positions, colors } = React.useMemo(() => {
+  const { positions, colors } = useMemo(() => {
     const particleCount = 5000
     const positions = new Float32Array(particleCount * 3)
     const colors = new Float32Array(particleCount * 3)
@@ -198,8 +198,8 @@ function ConnectionTunnel() {
     new THREE.Vector3(-350, 100, -400), // Solar system
   ]
 
-  const curve = React.useMemo(() => new THREE.CatmullRomCurve3(tunnelPoints), [])
-  const points = React.useMemo(() => curve.getPoints(150), [curve])
+  const curve = useMemo(() => new THREE.CatmullRomCurve3(tunnelPoints), [])
+  const points = useMemo(() => curve.getPoints(150), [curve])
 
   return (
     <line>
@@ -222,7 +222,7 @@ function ConnectionTunnel() {
 
 // Background stars
 function BackgroundStars() {
-  const positions = React.useMemo(() => {
+  const positions = useMemo(() => {
     const pos = new Float32Array(1000 * 3)
     for (let i = 0; i < 1000 * 3; i += 3) {
       pos[i] = (Math.random() - 0.5) * 2000
