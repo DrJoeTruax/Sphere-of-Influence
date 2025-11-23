@@ -218,8 +218,8 @@ function ForegroundGlowingSphere({ phase }: { phase: JourneyPhase }) {
   }
 
   return (
-    <group position={[0, 0, 100]}>
-      {/* Main glowing sphere */}
+    <group position={[0, -50, 200]}>
+      {/* Main glowing sphere - positioned lower and closer so it doesn't block solar system */}
       <mesh ref={meshRef}>
         <sphereGeometry args={[1, 64, 64]} />
         <meshBasicMaterial
@@ -267,9 +267,9 @@ function JourneyCameraController({ phase, onPhaseComplete }: { phase: JourneyPha
 
     switch (phase) {
       case 'LANDING':
-        // Static position showing foreground + distant solar system
-        camera.position.set(0, 50, 150)
-        camera.lookAt(0, 0, 0)
+        // Static position showing foreground + DISTANT solar system
+        camera.position.set(0, 200, 500)
+        camera.lookAt(0, 0, -20000) // Look toward distant solar system
         break
 
       case 'WORMHOLE_SPAWN':
@@ -289,17 +289,19 @@ function JourneyCameraController({ phase, onPhaseComplete }: { phase: JourneyPha
         break
 
       case 'TRAVERSING':
-        // Move through wormhole toward solar system (5 seconds)
-        const t1 = Math.min(elapsed / 5, 1)
+        // Fly TOWARD the solar system and wormhole (8 seconds)
+        const t1 = Math.min(elapsed / 8, 1)
         const eased1 = 1 - Math.pow(1 - t1, 3)
-        camera.position.z = 150 - eased1 * 5150 // Move from 150 to -5000
-        camera.position.y = 50 - eased1 * 40 // Lower down
-        camera.lookAt(0, 0, -5000)
 
-        if (t1 >= 0.4 && t1 < 0.6) {
+        // Move from foreground (500) all the way to wormhole entrance (-19500)
+        camera.position.z = 500 - eased1 * 20000 // From 500 to -19500
+        camera.position.y = 200 - eased1 * 190 // Lower down to 10
+        camera.lookAt(0, 0, -20000)
+
+        if (t1 >= 0.3 && t1 < 0.5) {
           // Show hope overlay mid-journey
           onPhaseComplete('HOPE_OVERLAY')
-        } else if (elapsed > 5) {
+        } else if (elapsed > 8) {
           startTime.current = Date.now()
           onPhaseComplete('APPROACHING')
         }
@@ -307,25 +309,41 @@ function JourneyCameraController({ phase, onPhaseComplete }: { phase: JourneyPha
 
       case 'HOPE_OVERLAY':
         // Continue traversing while showing overlay
-        const t2 = Math.min(elapsed / 5, 1)
+        const t2 = Math.min(elapsed / 8, 1)
         const eased2 = 1 - Math.pow(1 - t2, 3)
-        camera.position.z = 150 - eased2 * 5150
-        camera.position.y = 50 - eased2 * 40
-        camera.lookAt(0, 0, -5000)
+        camera.position.z = 500 - eased2 * 20000
+        camera.position.y = 200 - eased2 * 190
+        camera.lookAt(0, 0, -20000)
 
-        if (elapsed > 5) {
+        if (elapsed > 8) {
           startTime.current = Date.now()
           onPhaseComplete('APPROACHING')
         }
         break
 
       case 'APPROACHING':
-        // Approach Earth (5 seconds)
+        // Enter the wormhole and emerge at Earth (5 seconds)
         const t3 = Math.min(elapsed / 5, 1)
         const eased3 = 1 - Math.pow(1 - t3, 3)
-        camera.position.z = -5000 + eased3 * 4995 // Approach to z: -5
-        camera.position.y = 10
-        camera.lookAt(0, 0, 0)
+
+        // Enter wormhole tunnel, then emerge at Earth
+        if (t3 < 0.5) {
+          // First half: Enter wormhole (spiraling in)
+          const spiralT = t3 * 2
+          const spiralAngle = spiralT * Math.PI * 4
+          const spiralRadius = 100 * (1 - spiralT)
+          camera.position.x = Math.cos(spiralAngle) * spiralRadius
+          camera.position.y = 10 + Math.sin(spiralAngle) * spiralRadius * 0.5
+          camera.position.z = -19500 - spiralT * 500
+          camera.lookAt(0, 0, -20000)
+        } else {
+          // Second half: Emerge at Earth orbit
+          const emergeT = (t3 - 0.5) * 2
+          camera.position.z = -20000 + emergeT * 19995 // Emerge to z: -5
+          camera.position.y = 10
+          camera.position.x = 0
+          camera.lookAt(0, 0, 0)
+        }
 
         if (elapsed > 5) {
           onPhaseComplete('ARRIVED')
@@ -367,7 +385,7 @@ export default function BreakthroughLandingPage() {
     <main className="min-h-screen bg-black text-white relative overflow-hidden">
       {/* Single Continuous R3F Scene */}
       <div className="fixed inset-0 z-0">
-        <Canvas camera={{ fov: 60, near: 0.1, far: 10000 }} dpr={[1, 1.5]}>
+        <Canvas camera={{ fov: 60, near: 0.1, far: 50000 }} dpr={[1, 1.5]}>
           <Suspense fallback={null}>
             {/* Journey Camera Controller */}
             <JourneyCameraController phase={phase} onPhaseComplete={handlePhaseComplete} />
@@ -375,8 +393,8 @@ export default function BreakthroughLandingPage() {
             {/* Foreground Glowing Sphere (Landing Page) */}
             <ForegroundGlowingSphere phase={phase} />
 
-            {/* Solar System (FAR in background, 8x scale) */}
-            <group position={[0, 0, -6000]} scale={8}>
+            {/* Solar System (WAYYYY FAR in background, 12x scale) */}
+            <group position={[0, 0, -20000]} scale={12}>
               <EarthScene
                 onCameraAnimationComplete={() => {}}
                 showEarthDetails={phase === 'ARRIVED'}
