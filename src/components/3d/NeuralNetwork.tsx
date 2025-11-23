@@ -2,6 +2,7 @@
 
 import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { useJourney } from '@/contexts/JourneyContext'
 import * as THREE from 'three'
 
 interface NeuralNetworkProps {
@@ -15,9 +16,11 @@ export default function NeuralNetwork({
   size = 10,
   nodeCount = 150
 }: NeuralNetworkProps) {
+  const { state } = useJourney()
   const nodesRef = useRef<THREE.Points>(null)
   const connectionsRef = useRef<THREE.LineSegments>(null)
-  const pulseRef = useRef<THREE.Points>(null)
+  const groupRef = useRef<THREE.Group>(null)
+  const expansionProgress = useRef(0)
 
   // Generate random node positions in 3D space
   const { nodePositions, connections, nodeData } = useMemo(() => {
@@ -172,33 +175,50 @@ export default function NeuralNetwork({
   )
 
   // Animation loop
-  useFrame((state) => {
-    const time = state.clock.elapsedTime
+  useFrame((_, delta) => {
+    const time = Date.now() / 1000
+
+    // Handle expansion when entering wormhole
+    if (state === 'ENTERING' || state === 'TRAVERSING' || state === 'ARRIVED') {
+      expansionProgress.current = Math.min(expansionProgress.current + delta * 0.5, 1)
+    }
 
     // Update node shader time
     if (nodesRef.current) {
       const material = nodesRef.current.material as THREE.ShaderMaterial
       material.uniforms.time.value = time
+
+      // Fade out during expansion
+      const fadeMaterial = nodesRef.current.material as any
+      if (fadeMaterial.uniforms && fadeMaterial.uniforms.opacity) {
+        fadeMaterial.uniforms.opacity.value = 1 - expansionProgress.current
+      }
     }
 
-    // Gently rotate the entire network
-    if (nodesRef.current && connectionsRef.current) {
+    // Expand and fade the sphere
+    if (groupRef.current) {
+      const expansionScale = 1 + expansionProgress.current * 3
+      groupRef.current.scale.setScalar(expansionScale)
+
+      // Fade out connections
+      if (connectionsRef.current) {
+        const material = connectionsRef.current.material as THREE.LineBasicMaterial
+        material.opacity = (0.1 + Math.sin(time * 0.5) * 0.05) * (1 - expansionProgress.current)
+      }
+    }
+
+    // Gently rotate the entire network (only when not expanding)
+    if (state === 'LANDING' && nodesRef.current && connectionsRef.current) {
       const rotation = time * 0.05
       nodesRef.current.rotation.y = rotation
       connectionsRef.current.rotation.y = rotation
       nodesRef.current.rotation.x = Math.sin(time * 0.1) * 0.1
       connectionsRef.current.rotation.x = Math.sin(time * 0.1) * 0.1
     }
-
-    // Pulse connections opacity
-    if (connectionsRef.current) {
-      const material = connectionsRef.current.material as THREE.LineBasicMaterial
-      material.opacity = 0.1 + Math.sin(time * 0.5) * 0.05
-    }
   })
 
   return (
-    <group position={position}>
+    <group ref={groupRef} position={position}>
       {/* Neural network nodes */}
       <points ref={nodesRef}>
         <bufferGeometry>
