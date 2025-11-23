@@ -14,12 +14,15 @@ import WormholePortal from './WormholePortal'
 
 const EARTH_RADIUS = 1.5
 
+export type SceneState = 'LANDING' | 'ENTERING' | 'HUB_SELECTION'
+
 interface EarthSceneProps {
   onCameraAnimationComplete?: () => void
   onHubSelect?: (hubId: string) => void
   cycleIndex: number
   showEarthDetails?: boolean
   autoZoom?: boolean
+  sceneState?: SceneState
 }
 
 // Hub data matching the user's regionalHubs structure
@@ -64,23 +67,34 @@ const regionalHubs: RegionalHub[] = [
 function CameraController({
   target,
   onZoomComplete,
-  cycleIndex
+  cycleIndex,
+  sceneState = 'HUB_SELECTION'
 }: {
   target: React.MutableRefObject<THREE.Vector3>
   onZoomComplete: () => void
   cycleIndex: number
+  sceneState?: SceneState
 }) {
   const { camera, gl } = useThree()
   const controlsRef = useRef<OrbitControlsImpl>(null)
-  const [isZooming, setIsZooming] = useState(true)
+  const [isZooming, setIsZooming] = useState(sceneState !== 'LANDING') // Don't zoom on landing
   const [isFlying, setIsFlying] = useState(false)
   const [isUserInteracting, setIsUserInteracting] = useState(false)
 
-  const startDist = 800
-  const endDist = 5
-  const startYPos = 80
-  const endYPos = 0
-  const duration = 2
+  // Camera distances based on scene state
+  const getCameraDistances = () => {
+    switch (sceneState) {
+      case 'LANDING':
+        return { startDist: 2500, endDist: 2500, startYPos: 200, endYPos: 200, duration: 0 } // Static far view
+      case 'ENTERING':
+        return { startDist: 2500, endDist: 800, startYPos: 200, endYPos: 80, duration: 3 } // Zoom in
+      case 'HUB_SELECTION':
+      default:
+        return { startDist: 800, endDist: 5, startYPos: 80, endYPos: 0, duration: 2 } // Normal zoom
+    }
+  }
+
+  const { startDist, endDist, startYPos, endYPos, duration } = getCameraDistances()
   const startPos = useRef(new THREE.Vector3(0, startYPos, startDist)).current
   const endPos = useMemo(() => new THREE.Vector3(), [])
 
@@ -226,7 +240,8 @@ export default function EarthScene({
   onHubSelect,
   cycleIndex,
   showEarthDetails = false,
-  autoZoom = true
+  autoZoom = true,
+  sceneState = 'HUB_SELECTION'
 }: EarthSceneProps) {
   // Earth's position (will be updated by OrbitingEarthSystem)
   const earthPos = useRef(new THREE.Vector3(0, 0, 0))
@@ -372,6 +387,7 @@ export default function EarthScene({
         target={earthPos}
         onZoomComplete={() => onCameraAnimationComplete?.()}
         cycleIndex={cycleIndex}
+        sceneState={sceneState}
       />
     </>
   )
