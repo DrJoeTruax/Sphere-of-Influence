@@ -185,30 +185,110 @@ function TraversalOverlay({ phase }: { phase: JourneyPhase }) {
   )
 }
 
-// Massive Glowing Wormhole/Sphere for Landing Page
-function ForegroundGlowingSphere({ phase }: { phase: JourneyPhase }) {
-  const meshRef = useRef<THREE.Mesh>(null)
-  const glowRef = useRef<THREE.Mesh>(null)
+// Foreground Neural Constellation
+function ForegroundNeuralConstellation({ phase }: { phase: JourneyPhase }) {
+  const meshRef = useRef<THREE.Points>(null)
+  const groupRef = useRef<THREE.Group>(null)
+
+  const nodeCount = 150
+  const size = 80 // Large constellation in foreground
+
+  // Generate nodes
+  const { positions, scales, phases } = useMemo(() => {
+    const positions = new Float32Array(nodeCount * 3)
+    const scales = new Float32Array(nodeCount)
+    const phases = new Float32Array(nodeCount)
+
+    for (let i = 0; i < nodeCount; i++) {
+      const theta = Math.random() * Math.PI * 2
+      const phi = Math.acos(2 * Math.random() - 1)
+      const radius = size * (0.5 + Math.random() * 0.5)
+
+      positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta)
+      positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta)
+      positions[i * 3 + 2] = radius * Math.cos(phi)
+
+      scales[i] = 0.5 + Math.random() * 1.5
+      phases[i] = Math.random() * Math.PI * 2
+    }
+
+    return { positions, scales, phases }
+  }, [])
+
+  const nodeShader = useMemo(
+    () => ({
+      uniforms: {
+        time: { value: 0 },
+      },
+      vertexShader: `
+        uniform float time;
+        attribute float scale;
+        attribute float phase;
+        varying vec3 vColor;
+
+        void main() {
+          float pulse = sin(time * 2.0 + phase) * 0.5 + 0.5;
+          float finalScale = scale * (0.8 + pulse * 0.4);
+
+          float colorMix = sin(phase + time * 0.5) * 0.5 + 0.5;
+          vec3 col1 = vec3(0.0, 0.83, 1.0); // Cyan
+          vec3 col2 = vec3(1.0, 0.0, 1.0); // Magenta
+          vec3 col3 = vec3(1.0, 0.67, 0.0); // Orange
+
+          vColor = mix(mix(col1, col2, colorMix), col3, pulse * 0.3);
+
+          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+          gl_PointSize = finalScale * 8.0 * (300.0 / -mvPosition.z);
+          gl_Position = projectionMatrix * mvPosition;
+        }
+      `,
+      fragmentShader: `
+        varying vec3 vColor;
+
+        void main() {
+          vec2 center = gl_PointCoord - vec2(0.5);
+          float dist = length(center);
+
+          if (dist > 0.5) discard;
+
+          float alpha = 1.0 - smoothstep(0.2, 0.5, dist);
+          float glow = 1.0 - smoothstep(0.0, 0.5, dist);
+
+          vec3 finalColor = vColor * (0.5 + glow * 0.5);
+          gl_FragColor = vec4(finalColor, alpha * 0.8);
+        }
+      `,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    }),
+    []
+  )
 
   useFrame((state) => {
     const time = state.clock.elapsedTime
 
     if (meshRef.current) {
-      // Gentle pulsing
-      const scale = 1 + Math.sin(time * 0.5) * 0.05
-      meshRef.current.scale.setScalar(scale * 20) // Make it MASSIVE
+      const material = meshRef.current.material as THREE.ShaderMaterial
+      material.uniforms.time.value = time
     }
 
-    if (glowRef.current) {
-      const glowScale = 1 + Math.sin(time * 0.3) * 0.1
-      glowRef.current.scale.setScalar(glowScale * 25)
+    // Gentle rotation
+    if (groupRef.current && phase === 'LANDING') {
+      groupRef.current.rotation.y = time * 0.05
+      groupRef.current.rotation.x = Math.sin(time * 0.1) * 0.1
     }
 
-    // Expand and fade when wormhole spawns
+    // Expand and fade when transitioning
     if (phase === 'WORMHOLE_SPAWN' || phase === 'TEXT_PULL') {
+      if (groupRef.current) {
+        const expandScale = 1 + (time - state.clock.elapsedTime + 0.5) * 0.5
+        groupRef.current.scale.setScalar(Math.min(expandScale, 3))
+      }
       if (meshRef.current) {
-        const expandScale = meshRef.current.scale.x * 1.05
-        meshRef.current.scale.setScalar(Math.min(expandScale, 50))
+        const material = meshRef.current.material as THREE.ShaderMaterial
+        const fade = Math.max(0, 1 - (time - state.clock.elapsedTime + 0.5))
+        material.opacity = fade
       }
     }
   })
@@ -218,41 +298,33 @@ function ForegroundGlowingSphere({ phase }: { phase: JourneyPhase }) {
   }
 
   return (
-    <group position={[0, -50, 200]}>
-      {/* Main glowing sphere - positioned lower and closer so it doesn't block solar system */}
-      <mesh ref={meshRef}>
-        <sphereGeometry args={[1, 64, 64]} />
-        <meshBasicMaterial
-          color="#ffffff"
-          transparent
-          opacity={0.9}
-          blending={THREE.AdditiveBlending}
-        />
-      </mesh>
+    <group ref={groupRef} position={[0, 0, 100]}>
+      <points ref={meshRef}>
+        <bufferGeometry>
+          <bufferAttribute
+            attach="attributes-position"
+            count={nodeCount}
+            array={positions}
+            itemSize={3}
+          />
+          <bufferAttribute
+            attach="attributes-scale"
+            count={nodeCount}
+            array={scales}
+            itemSize={1}
+          />
+          <bufferAttribute
+            attach="attributes-phase"
+            count={nodeCount}
+            array={phases}
+            itemSize={1}
+          />
+        </bufferGeometry>
+        <shaderMaterial attach="material" {...nodeShader} />
+      </points>
 
-      {/* Outer glow */}
-      <mesh ref={glowRef}>
-        <sphereGeometry args={[1, 32, 32]} />
-        <meshBasicMaterial
-          color="#ff00ff"
-          transparent
-          opacity={0.3}
-          blending={THREE.AdditiveBlending}
-          side={THREE.BackSide}
-        />
-      </mesh>
-
-      {/* Additional pink glow layer */}
-      <mesh scale={30}>
-        <sphereGeometry args={[1, 32, 32]} />
-        <meshBasicMaterial
-          color="#ff1493"
-          transparent
-          opacity={0.15}
-          blending={THREE.AdditiveBlending}
-          side={THREE.BackSide}
-        />
-      </mesh>
+      {/* Connection lines between nodes */}
+      {/* Add connection lines here if needed */}
     </group>
   )
 }
@@ -390,8 +462,8 @@ export default function BreakthroughLandingPage() {
             {/* Journey Camera Controller */}
             <JourneyCameraController phase={phase} onPhaseComplete={handlePhaseComplete} />
 
-            {/* Foreground Glowing Sphere (Landing Page) */}
-            <ForegroundGlowingSphere phase={phase} />
+            {/* Foreground Neural Constellation */}
+            <ForegroundNeuralConstellation phase={phase} />
 
             {/* Solar System (WAYYYY FAR in background, 12x scale) */}
             <group position={[0, 0, -20000]} scale={12}>
